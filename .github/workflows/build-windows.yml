@@ -40,19 +40,63 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
-      - name: 打包 exe
+      - name: 打包 exe（轻量版，不含 OpenCV）
         run: pyinstaller packaging/ulpp.spec --noconfirm
-      - name: 上传构建产物（Actions 页面可手动下载）
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: exe-${{ github.ref_name }}
           path: dist/*.exe
           if-no-files-found: error
+
+  build-v2-full:
+    # 全功能包：带 OpenCV（拍照量纸）。跑完两个产物一起挂到 Release。
+    needs: [test, build-exe]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装依赖（含 photo extra）
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[photo]" pyinstaller
+      - name: 打包 v2 全功能（onedir）
+        run: pyinstaller packaging/ulpp_v2.spec --noconfirm
+      - name: 加两个启动器
+        shell: pwsh
+        run: |
+          $d = "dist/ulpp2"
+          Set-Content -Path "$d/start-v2.bat" -Value "@echo off`r`nstart `"`" `"%~dp0ulpp2.exe`" --v2" -Encoding ascii
+          Set-Content -Path "$d/start-classic.bat" -Value "@echo off`r`nstart `"`" `"%~dp0ulpp2.exe`"" -Encoding ascii
+      - name: 压缩
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/ulpp2/*" -DestinationPath "ulpp-${{ github.ref_name }}-full-windows-x64.zip"
+      - name: 取回轻量 exe 的构建产物
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/download-artifact@v4
+        with:
+          name: exe-${{ github.ref_name }}
+          path: dist
       - name: 发版（只有打 tag 时）
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          files: |
+            dist/*.exe
+            ulpp-*-full-windows-x64.zip
           generate_release_notes: true
+          append_body: true
+          body: |
+            ## 下载哪个？
+
+            | 文件 | 说明 |
+            |---|---|
+            | `ulpp-<tag>-full-windows-x64.zip` | **推荐**：全功能，含拍照量纸（解压后双击 `启动 v2.bat`） |
+            | `ulpp.exe` | 轻量单文件（约 36 MB），**不含 OpenCV**，拍照量纸不可用 |
+
+            > 两者都能跑扫描量纸、预设、出图、接着打；区别只在拍照量纸。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
