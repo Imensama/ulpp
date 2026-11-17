@@ -58,12 +58,14 @@ class CalibrateWizard(tk.Toplevel):
         self._box = (0, 0)
         self._go_btn = None
 
-        self.body = tk.Frame(self, bg=P["bg"], width=S(470))
-        self.body.pack(fill="both", expand=True, padx=S(44), pady=(S(22), S(10)))
-        self.rule = tk.Frame(self, bg="#CBD5E1", height=1)
-        self.rule.pack(side="bottom", fill="x")
+        # 先把底部（按钮栏 + 分隔线）占好位置，再让 body 填剩下的——
+        # 反过来的话 body 会把 foot 挤出窗口，按钮就"消失"了。
         self.foot = tk.Frame(self, bg=P["bg"])
         self.foot.pack(side="bottom", fill="x", padx=S(24), pady=(S(10), S(14)))
+        self.rule = tk.Frame(self, bg="#CBD5E1", height=1)
+        self.rule.pack(side="bottom", fill="x")
+        self.body = tk.Frame(self, bg=P["bg"], width=S(470))
+        self.body.pack(fill="both", expand=True, padx=S(44), pady=(S(22), S(4)))
         self.render()
         self.update_idletasks()
         self._centre()
@@ -170,26 +172,21 @@ class CalibrateWizard(tk.Toplevel):
         return canvas
 
     def _choice(self, parent, left_text, left_cmd, right_text, right_cmd):
-        """左右二选一：两个按钮平分内容宽度。"""
+        """左右二选一：直角按钮，两个平分内容宽度。"""
         app, P = self.app, self.app.P
         row = tk.Frame(parent, bg=P["bg"])
         row.pack(side="bottom", fill="x", pady=(0, app.S(6)), anchor="w")
         available = app.S(647) - 2 * app.S(44)
         gap = app.S(14)
         card_w = int((available - gap) / 2)
-        style = os.environ.get("ULPP_SHAPE", "round")
         for i, (text, cmd, primary) in enumerate(
                 ((left_text, left_cmd, True), (right_text, right_cmd, False))):
-            holder = tk.Frame(row, bg=P["bg"])
-            holder.pack(side="left", padx=(0, gap) if i == 0 else (0, 0))
-            if style == "round":
-                self._round_button(holder, text, cmd, primary, card_w).pack()
-            else:
-                edge = P["accent"] if primary else "#9DB4B8"
-                card = tk.Frame(holder, bg=edge, width=card_w, height=app.S(58))
-                card.pack(); card.pack_propagate(False)
-                btn = self._button(card, text, cmd, kind="solid" if primary else "ghost", size=13)
-                btn.pack(fill="both", expand=True, padx=2, pady=2)
+            edge = P["accent"] if primary else "#94A3B8"
+            card = tk.Frame(row, bg=edge, width=card_w, height=app.S(58))
+            card.pack(side="left", padx=(0, gap) if i == 0 else (0, 0))
+            card.pack_propagate(False)
+            btn = self._button(card, text, cmd, kind="solid" if primary else "ghost", size=13)
+            btn.pack(fill="both", expand=True, padx=2, pady=2)
         return row
 
     def _option(self, parent, title, desc, command, primary=False):
@@ -272,7 +269,8 @@ class CalibrateWizard(tk.Toplevel):
             # 黄金分割：宽 = 高 × 1.618
             self.geometry("%dx%d" % (self.app.S(647), self.app.S(400)))
         elif self.step == "corners":
-            width, height = self._size_for()
+            width = max(self.app.S(780), self.winfo_reqwidth())
+            height = self.winfo_reqheight()
             self.geometry("%dx%d" % (width, height))
         else:
             self._hug()
@@ -749,7 +747,11 @@ class CalibrateWizard(tk.Toplevel):
 
 
 class CartoonHelp(tk.Toplevel):
-    """三帧卡通演示：怎么摆、怎么拍、怎么点四角。自动轮播，点哪一帧就停在哪一帧。"""
+    """三步图示：一次性排开（不轮播），一眼看完怎么摆、怎么拍、怎么点。"""
+
+    BOARD_FILL, BOARD_LINE, BOARD_DOT = "#EEF3F9", "#94A3B8", "#111827"
+    SHEET_FILL, SHEET_LINE, SHEET_GRID = "#FDF6EC", "#C9AE8A", "#EBDCC4"
+    INK, ACCENT = "#334155", "#B45309"
 
     def __init__(self, app) -> None:
         super().__init__(app.root)
@@ -759,32 +761,35 @@ class CartoonHelp(tk.Toplevel):
         self.configure(bg=P["bg"])
         self.transient(app.root)
         self.resizable(False, False)
-        self.index = 0
-        self.playing = True
 
-        self.canvas = tk.Canvas(self, width=S(520), height=S(300), bg="#FFFFFF",
-                                highlightthickness=1, highlightbackground=P["border"])
-        self.canvas.pack(padx=S(18), pady=(S(18), S(10)))
-        self.caption = tk.Label(self, text="", font=app.F(12), fg=P["text"],
-                                bg=P["bg"], wraplength=S(500), justify="left")
-        self.caption.pack(fill="x", padx=S(18))
-
+        panel_w = S(300)
+        panel_h = S(235)
+        pad = S(16)
+        self.canvases = []
         row = tk.Frame(self, bg=P["bg"])
-        row.pack(fill="x", padx=S(18), pady=S(14))
-        self.play_btn = tk.Button(row, text=app.T("calib.help_stop"), font=app.F(10),
-                                  relief="flat", bd=0, bg=P["soft"], fg=P["soft_text"],
-                                  padx=S(12), pady=S(7), cursor="hand2",
-                                  command=self.toggle)
-        self.play_btn.pack(side="left")
-        tk.Button(row, text=app.T("calib.help_close"), font=app.F(10, True),
-                  relief="flat", bd=0, bg=P["accent"], fg=P["accent_text"],
-                  padx=S(16), pady=S(7), cursor="hand2", command=self.destroy).pack(side="right")
+        row.pack(padx=pad, pady=(S(16), S(6)))
+        for i in range(3):
+            col = tk.Frame(row, bg=P["bg"])
+            col.pack(side="left", padx=(0 if i == 0 else S(12), 0))
+            canvas = tk.Canvas(col, width=panel_w, height=panel_h, bg="#FFFFFF",
+                               highlightthickness=1, highlightbackground=P["border"])
+            canvas.pack()
+            canvas.create_text(S(18), S(16), text="①②③"[i],
+                               fill=self.ACCENT, font=app.F(14, True))
+            self.canvases.append(canvas)
+            tk.Label(col, text=app.T("calib.help%d" % (i + 1)), font=app.F(11),
+                     fg=P["text"], bg=P["bg"], wraplength=panel_w,
+                     justify="left").pack(fill="x", pady=(S(8), 0))
 
-        self._after = None
+        foot = tk.Frame(self, bg=P["bg"])
+        foot.pack(fill="x", padx=pad, pady=(S(8), S(14)))
+        tk.Button(foot, text=app.T("calib.help_close"), font=app.F(11, True),
+                  relief="flat", bd=0, bg=P["accent"], fg=P["accent_text"],
+                  padx=S(20), pady=S(9), cursor="hand2", command=self.destroy
+                  ).pack(side="right")
+
         self.update_idletasks()
-        self.show(0)
-        self.update_idletasks()
-        self.show(0)
+        self._draw_all()
         host = app.root
         x = host.winfo_rootx() + (host.winfo_width() - self.winfo_width()) // 2
         y = host.winfo_rooty() + (host.winfo_height() - self.winfo_height()) // 3
@@ -794,71 +799,31 @@ class CartoonHelp(tk.Toplevel):
         except tk.TclError:                     # pragma: no cover
             pass
 
-    # ---- 播放控制 ----
-    def toggle(self) -> None:
-        self.playing = not self.playing
-        self.play_btn.configure(text=self.app.T("calib.help_stop" if self.playing
-                                                else "calib.help_play"))
-        if self.playing:
-            self._schedule()
-        elif self._after is not None:
-            self.after_cancel(self._after)
-            self._after = None
-
-    def _schedule(self) -> None:
-        if self._after is not None:
-            self.after_cancel(self._after)
-        self._after = self.after(1800, self._next)
-
-    def _next(self) -> None:
-        self._after = None
-        if not self.playing:
-            return
-        self.show((self.index + 1) % 3)
-        self._schedule()
-
-    def show(self, index: int) -> None:
-        self.index = index
-        self.canvas.delete("all")
+    def _draw_all(self) -> None:
         drawers = (self._draw_board_and_sheet, self._draw_phone, self._draw_corners)
-        drawers[index]()
-        self.caption.configure(text=self.app.T("calib.help%d" % (index + 1)))
+        for canvas, drawer in zip(self.canvases, drawers):
+            canvas.delete("all")
+            self._canvas = canvas
+            drawer()
 
-    # ---- 三帧卡通：统一 A4 比例、统一标记 ----
-    BOARD_FILL, BOARD_LINE, BOARD_DOT = "#EEF3F9", "#94A3B8", "#111827"
-    SHEET_FILL, SHEET_LINE, SHEET_GRID = "#FDF6EC", "#C9AE8A", "#EBDCC4"
-    INK, ACCENT = "#334155", "#B45309"
-
-    def _geom(self):
-        w = self.canvas.winfo_width()
-        h = self.canvas.winfo_height()
-        if w < 50 or h < 50:
-            w = self.canvas.winfo_reqwidth() or int(self.app.S(520))
-            h = self.canvas.winfo_reqheight() or int(self.app.S(300))
-        return float(w), float(h)
-
-    def _board(self, x, y, width, label=False):
-        """标定板：A4 比例 + 方块阵列。"""
-        c = self.canvas
+    # ---- 三个小图（每个画在 300×360 的面板里）----
+    def _board(self, x, y, width, caption=None):
+        c = self._canvas
         height = width * 1.4142
         c.create_rectangle(x, y, x + width, y + height, fill=self.BOARD_FILL,
                            outline=self.BOARD_LINE, width=2)
-        cols, rows = 5, 7
-        for row in range(rows):
-            for col in range(cols):
-                cx = x + width * (0.14 + col * 0.18)
-                cy = y + height * (0.12 + row * 0.125)
-                side = width * 0.055
-                c.create_rectangle(cx, cy, cx + side, cy + side,
-                                   fill=self.BOARD_DOT, outline="")
-        if label:
-            c.create_text(x + width / 2, y + height + height * 0.10,
-                          text="标定板（打印）", fill=self.INK, font=self.app.F(10))
-        return height
+        for r in range(6):
+            for col in range(4):
+                cx = x + width * (0.16 + col * 0.23)
+                cy = y + height * (0.12 + r * 0.14)
+                side = width * 0.06
+                c.create_rectangle(cx, cy, cx + side, cy + side, fill=self.BOARD_DOT, outline="")
+        if caption:
+            c.create_text(x + width / 2, y + height + 16, text=caption,
+                          fill=self.INK, font=self.app.F(10))
 
-    def _sheet(self, x, y, width, corners=False, label=False):
-        """胶纸：A4 比例 + 淡淡的格子；corners=True 时画四个角点。"""
-        c = self.canvas
+    def _sheet(self, x, y, width, caption=None, corners=False):
+        c = self._canvas
         height = width * 1.4142
         c.create_rectangle(x, y, x + width, y + height, fill=self.SHEET_FILL,
                            outline=self.SHEET_LINE, width=2)
@@ -871,60 +836,47 @@ class CartoonHelp(tk.Toplevel):
         if corners:
             pts = [(x, y), (x + width, y), (x + width, y + height), (x, y + height)]
             for i, (px, py) in enumerate(pts):
-                c.create_oval(px - 8, py - 8, px + 8, py + 8, outline="#F59E0B", width=3)
-                dx = 18 if i in (1, 2) else -18
-                dy = -18 if i in (0, 1) else 18
+                c.create_oval(px - 7, py - 7, px + 7, py + 7, outline="#F59E0B", width=3)
+                dx = 16 if i in (1, 2) else -16
+                dy = -16 if i in (0, 1) else 16
                 c.create_text(px + dx, py + dy, text=str(i + 1), fill="#F59E0B",
                               font=self.app.F(11, True))
-        if label:
-            c.create_text(x + width / 2, y + height + height * 0.10,
-                          text="胶纸", fill=self.INK, font=self.app.F(10))
-        return height
+        if caption:
+            c.create_text(x + width / 2, y + height + 16, text=caption,
+                          fill=self.INK, font=self.app.F(10))
 
     def _draw_board_and_sheet(self) -> None:
-        c = self.canvas
-        w, h = self._geom()
-        width = h * 0.34
-        top = h * 0.10
-        board_x = w * 0.18
-        sheet_x = w * 0.54
-        self._board(board_x, top, width, label=True)
-        self._sheet(sheet_x, top, width, label=True)
-        c.create_text(w / 2, h * 0.90, text="两张并排平放，中间留一条缝",
-                      fill=self.ACCENT, font=self.app.F(12, True))
+        w = self._canvas.winfo_reqwidth()
+        width = w * 0.30
+        self._board(w * 0.12, 16, width, caption="标定板")
+        self._sheet(w * 0.54, 16, width, caption="胶纸")
 
     def _draw_phone(self) -> None:
-        """相机取景框：让人看到拍出来是什么样子。"""
-        c = self.canvas
-        w, h = self._geom()
-        fx0, fy0 = w * 0.26, h * 0.07
-        fx1, fy1 = w * 0.74, h * 0.68
+        """第 2 步：相机取景框里，两张纸都完整入画。"""
+        c = self._canvas
+        w = c.winfo_reqwidth()
+        h = c.winfo_reqheight()
+        fx0, fy0 = w * 0.07, h * 0.07
+        fx1, fy1 = w * 0.93, h * 0.86
         c.create_rectangle(fx0, fy0, fx1, fy1, fill="#111827", outline="#0F172A", width=2)
-        # 取景角标（橙色，四角）
-        inset = min(w, h) * 0.02
-        arm = min(w, h) * 0.09
-        for (px, py, sx, sy) in ((fx0 + inset, fy0 + inset, 1, 1),
-                                 (fx1 - inset, fy0 + inset, -1, 1),
-                                 (fx1 - inset, fy1 - inset, -1, -1),
-                                 (fx0 + inset, fy1 - inset, 1, -1)):
-            c.create_line(px, py, px + sx * arm, py, fill="#F59E0B", width=4)
-            c.create_line(px, py, px, py + sy * arm, fill="#F59E0B", width=4)
-        # 框里的两张纸（画面内完整）
-        width = (fy1 - fy0) * 0.40
-        top = fy0 + ((fy1 - fy0) - width * 1.4142) / 2.0
-        gap = (fx1 - fx0) * 0.06
-        total = width * 2 + gap
-        left = (fx0 + fx1) / 2 - total / 2
-        self._board(left, top, width)
-        self._sheet(left + width + gap, top, width)
-        c.create_text(w / 2, h * 0.84, text="拍出来：两张纸都在框里、四边不切",
-                      fill=self.ACCENT, font=self.app.F(12, True))
+        # 取景角标
+        arm = min(w, h) * 0.10
+        inset = min(w, h) * 0.03
+        for px, py, sx, sy in ((fx0 + inset, fy0 + inset, 1, 1), (fx1 - inset, fy0 + inset, -1, 1),
+                               (fx1 - inset, fy1 - inset, -1, -1), (fx0 + inset, fy1 - inset, 1, -1)):
+            c.create_line(px, py, px + sx * arm, py, fill="#F59E0B", width=3)
+            c.create_line(px, py, px, py + sy * arm, fill="#F59E0B", width=3)
+        # 框里的两张纸（完整入画）
+        frame_w = fx1 - fx0
+        paper_w = frame_w * 0.30
+        paper_h = paper_w * 1.4142
+        gap = frame_w * 0.06
+        left = (fx0 + fx1) / 2 - (paper_w * 2 + gap) / 2
+        top = fy0 + ((fy1 - fy0) - paper_h) / 2
+        self._board(left, top, paper_w)
+        self._sheet(left + paper_w + gap, top, paper_w)
 
     def _draw_corners(self) -> None:
-        c = self.canvas
-        w, h = self._geom()
-        width = h * 0.34
-        top = h * 0.08
-        self._sheet((w - width) / 2, top, width, corners=True)
-        c.create_text(w / 2, h * 0.90, text="点四个角（滚轮放大、右键拖动）",
-                      fill=self.ACCENT, font=self.app.F(12, True))
+        w = self._canvas.winfo_reqwidth()
+        width = w * 0.40
+        self._sheet((w - width) / 2, 38, width, corners=True)
