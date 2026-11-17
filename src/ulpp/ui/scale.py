@@ -39,7 +39,33 @@ COPPER.update(
     name="copper", accent="#A9532B", accent_text="#FFFFFF",
     soft="#FBF0E7", soft_text="#7C3A1D", dot_done="#E3B79A",
 )
-THEMES = {"light": LIGHT, "mono": MONO, "warm": WARM, "copper": COPPER}
+# Vista/Aero 味：浅蓝底 + 白卡 + 冷冷的蓝强调色
+VISTA = dict(LIGHT)
+VISTA.update(
+    name="vista", bg="#EAF2FB", card="#FFFFFF", text="#16202B", muted="#5B6B80",
+    border="#B9C7D9", accent="#1F6FB2", accent_text="#FFFFFF",
+    soft="#DCEEFF", soft_text="#0B4F8A", dot_done="#7FC4FF", chip="#F3F8FE",
+)
+# 好莱坞橙青（浅色版）：青灰底 + 一点橙做强调，暗部带青
+TEAL = dict(LIGHT)
+TEAL.update(
+    name="teal", bg="#F1F6F5", card="#FFFFFF", text="#123035", muted="#5D7B82",
+    border="#C7D8D6", accent="#E4572E", accent_text="#FFFFFF",
+    soft="#FDEBE4", soft_text="#9A3412", dot_done="#F7B267", chip="#F7FBFA",
+)
+# GMK Aero 风味：官方说"用 5 个 GMK 标准色复刻 Vista Aero"——浅青 TU2 / 深青 TU1 /
+# 白 CP / 亮黄 N6 / 灰 2B。直接用原色做小字按钮会花，所以主按钮压深一档保对比度。
+AERO = dict(LIGHT)
+AERO.update(
+    name="aero", bg="#F2FAFB", card="#FFFFFF", text="#123A40", muted="#5E7C82",
+    border="#C6E3E4", accent="#00959A", accent_text="#FFFFFF",
+    soft="#DFF3F3", soft_text="#00626A", dot_done="#5FD0D4", chip="#F7FCFD",
+    green="#2E7D6B",
+)
+AERO_CHIPS = {"CP 白": "#F5F5F5", "TU2 浅青": "#00A4A9", "TU1 深青": "#00627A",
+              "N6 亮黄": "#E5A100", "2B 灰": "#858A8D"}
+THEMES = {"light": LIGHT, "mono": MONO, "warm": WARM, "copper": COPPER,
+          "vista": VISTA, "teal": TEAL, "aero": AERO}
 
 
 def enable_dpi_awareness() -> str:

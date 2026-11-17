@@ -45,7 +45,13 @@ class Shell:
                  lang: Optional[str] = None, autosave: bool = True) -> None:
         self.root = root
         self.flow = flow if flow is not None else Flow.load()
-        self.m = Metrics(root, theme=os.environ.get("ULPP_THEME", "light"))
+        self.m = Metrics(root, theme=os.environ.get("ULPP_THEME", "aero"))
+        _alpha = os.environ.get("ULPP_ALPHA", "")
+        if _alpha:                       # 整窗半透明（想试试"玻璃感"时用）
+            try:
+                root.attributes("-alpha", max(0.5, min(1.0, float(_alpha))))
+            except Exception:
+                pass
         self.P = self.m.theme
         code = lang or current_language()
         self.lang = code if code in _TEXTS else "zh_CN"

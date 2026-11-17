@@ -4,6 +4,8 @@
 没装 OpenCV 的环境自动跳过。
 """
 
+from __future__ import annotations
+
 import tempfile
 import unittest
 import uuid

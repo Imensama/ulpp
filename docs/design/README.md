@@ -6,6 +6,7 @@
 | 文档 | 一句话 |
 |---|---|
 | [photo-measurement.md](photo-measurement.md) | 拍照量纸：单张照片的精度上限、三种标定路线的取舍、七个踩过的坑 |
+| [method-notes.md](method-notes.md) | 方法记录：怎么拆问题、怎么用数据决策、与小马的讨论摘要、什么时候该停 |
 | [wizard-flow.md](wizard-flow.md) | 全流程向导：两站式外壳、状态机、跳过与重入（v2，建设中） |
 | [template-model.md](template-model.md) | 胶纸模板的数据模型：为什么模板与打印机解耦（v2，建设中） |
 
