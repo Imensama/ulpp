@@ -114,6 +114,7 @@
   "builder.err.no_partial": "No cells selected. Place some content into the free cells first.",
   "builder.err.bad_slot": "Cell {slot} is out of range (this sheet has {per} cells).",
   "builder.err.bad_offset": "The calibration offset must be two numbers (X and Y, in mm).",
+  "builder.kind.image": "Image",
   "builder.kind.pdf": "PDF",
   "builder.kind.text": "Text",
   "builder.log.place": "Laying out {total} sticker(s) (PDF {pdf} + text {text}) on {sheets} sheet(s) → {file}",

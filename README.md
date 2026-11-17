@@ -290,3 +290,16 @@ A：目前不生成；源 PDF 里已有的会被原样抠过来。需要生成�
 
 [MIT](LICENSE)。第三方组件均为宽松协议（MIT / BSD / PSF / MIT-CMU），可以随 exe 分发到 Releases。
 详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+## v2 预览（新外壳）
+
+```powershell
+python -m ulpp --v2
+```
+
+老界面不受影响（`python -m ulpp`）。
+
+## 设计记录
+
+- [拍照量纸：试错与结论](docs/design/photo-measurement.md) —— 单张照片为什么只能到 0.3~0.5 mm、三种标定路线的取舍、踩过的坑
+- 其它设计笔记见 [`docs/design/`](docs/design/)

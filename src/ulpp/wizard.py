@@ -467,11 +467,11 @@ class CalibrationWizard(tk.Toplevel):
 
     # ------------------------------------------------------------ 第 2/3 步
     def step2(self):
-        self.page_canvas(430, 420, "plain", self.T("s2.cap"))
+        self.page_canvas(340, 481, "plain", self.T("s2.cap"))
         self.textcol(self.T("s2.title"), self.T("s2.body"), self.T("s2.tip"))
 
     def step3(self):
-        self.page_canvas(430, 420, "faceup", self.T("s3.cap"))
+        self.page_canvas(340, 481, "faceup", self.T("s3.cap"))
         self.textcol(self.T("s3.title"), self.T("s3.body"), self.T("s3.tip"))
 
     # ------------------------------------------------------------ 第 4 步
@@ -498,7 +498,7 @@ class CalibrationWizard(tk.Toplevel):
     # ------------------------------------------------------------ 第 5 步
     def step5(self):
         T, S = self.TH, self.S
-        self.page_canvas(430, 420, "plain", self.T("s5.cap"))
+        self.page_canvas(340, 481, "plain", self.T("s5.cap"))
         self.textcol(self.T("s5.title"), self.T("s5.body"), self.T("s5.tip"))
         row = tk.Frame(self.right, bg=T["bg"])
         row.pack(anchor="w", pady=(S(16), 0), fill="x")

@@ -114,6 +114,7 @@
   "builder.err.no_partial": "没有选中任何格子，先把内容放到空格里。",
   "builder.err.bad_slot": "格号 {slot} 超出范围（这张纸只有 {per} 格）。",
   "builder.err.bad_offset": "左右/上下微调必须是两个数字（X、Y，单位 mm）。",
+  "builder.kind.image": "图片",
   "builder.kind.pdf": "PDF",
   "builder.kind.text": "文字",
   "builder.log.place": "排 {total} 张贴纸（PDF {pdf} + 文字 {text}），共 {sheets} 版 → {file}",

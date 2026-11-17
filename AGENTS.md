@@ -1,0 +1,74 @@
+# AGENTS.md
+
+给 AI 编程助手（以及新接手的人）的入场说明。**先读这份，再动代码。**
+
+## 这是什么
+
+`ulpp`（通用标签打印平台 / Universal Label Printing Platform）：把 PDF 里的卡片或一段文字，
+按份数排进 A4 不干胶标签纸，并保证 100% 不缩放；支持"接着打"（用掉上次没用完的半张）。
+纯离线、单文件分发、tkinter 界面。
+
+## 目录
+
+```
+src/ulpp/            包代码
+  parser.py          解析 PDF 里的"卡片"（名称/编号/尺寸/数量…）
+  builder.py         排版并输出 PDF（含网格参考版、清单 CSV、边缘对位刻度）
+  sheets.py          打印机配置 + 胶纸记录（%APPDATA%\ulpp\sheets.json）
+  scan.py            从扫描件/校正后的照片量格阵（节距、相位、置信度）
+  scan_photo.py      手机照片：找 A4 四边 → 单应 → 交给 scan
+  scan_calib.py      标定板模式（先解镜头畸变 k1，再量）+ 手动点四角兜底
+  scan_board.py      生成标定板 PDF
+  templates.py       胶纸模板库（Template → GridSpec）
+  partial.py         接着打的内容分配（纯逻辑）
+  ui/                v2 外壳：shell / screens / texts / flow / scale / calibrate / advanced / partial
+  gui.py             v1 老界面（**不要动**，入口 python -m ulpp）
+  wizard.py          v1 的 9 步位置校准向导（v2 复用，不要重写）
+tests/               140+ 个 unittest（pytest 未引入，机器上没装）
+docs/design/         设计记录：为什么这么做、试过什么失败了
+packaging/           PyInstaller 配置（ulpp.spec 单文件 / ulpp_onedir.spec / ulpp_v2.spec）
+```
+
+## 跑起来
+
+```powershell
+cd <repo>
+$env:PYTHONPATH = "$PWD\src"
+python -m ulpp            # 老界面（v1）
+python -m ulpp --v2       # 新外壳（向导）
+python -m ulpp --help     # 命令行
+python -m unittest discover -s tests -t .    # 全部测试
+```
+
+## 打包
+
+```powershell
+python -m PyInstaller --noconfirm packaging/ulpp_v2.spec   # dist/ulpp2/ulpp2.exe（含 OpenCV，约 168MB）
+python -m PyInstaller --noconfirm packaging/ulpp_onedir.spec
+```
+
+## 硬约束（改代码前先看）
+
+1. **离线**：不联网、不依赖 AI/云。识别与测量必须本地完成。
+2. **不用 Qt / PySide / customtkinter / WebView**：只用 tkinter（体积与内网部署原因）。
+3. **不改名字**：包名、exe、配置目录都叫 `ulpp`；不要再出现 `label_sheet` / `ULP`。
+4. **v1 的界面与向导不要重写**：`gui.py`、`partial_gui.py`、`wizard.py` 保持可用，
+   v2 是"新入口 + 新外壳"，两者并存。
+5. **最小可用**：不要主动加安全层、不要顺手重构没被要求改的地方。
+6. **版本号只在发版时改**（`pyproject.toml` + `src/ulpp/__init__.py` 两处一起改）。
+
+## 已知的坑（踩过，别重踩）
+
+- 本机 PowerShell 的 `Set-Content -Encoding UTF8` 会写 **BOM**；`locales/*.json` 带 BOM 会让测试挂。
+  用 `python -c` 或 `[System.IO.File]::WriteAllText` 写文件。
+- Windows 沙箱里：`%APPDATA%` 只读、`tempfile.mkdtemp()` 建的目录不可写（用 `os.makedirs`）、
+  目录删不掉（测试别用 `TemporaryDirectory`）。
+- 拍照量纸的精度上限由**纸的平整度**决定（0.3~0.6 mm），不是算力；详见 `docs/design/photo-measurement.md`。
+- PDF 解析里"相邻两格文字坐标重叠"会把两张卡粘成一张：取词必须同时尝试
+  `use_text_flow=True/False` 并取锚点多的那份。
+
+## 测试约定
+
+- 只用 `unittest`，不加新依赖。
+- 涉及客户的图纸**不进仓库**：需要真实样本时用代码合成 PDF（见 `tests/test_parser_overlap.py`）。
+- 涉及图像处理的用例，没装 OpenCV 时用 `skipUnless` 跳过。

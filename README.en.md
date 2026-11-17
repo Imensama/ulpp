@@ -318,3 +318,8 @@ redistributed with the exe on Releases.
 See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 PyMuPDF is AGPL-3.0: bundling it into an exe would require publishing the source under AGPL, so this
 project stays MIT and uses pdfplumber + pypdf instead.
+
+## Design notes
+
+- [Measuring sheets from a photo](docs/design/photo-measurement.md) — why a single photo tops out at 0.3~0.5 mm (written in Chinese)
+- More notes: [`docs/design/`](docs/design/)

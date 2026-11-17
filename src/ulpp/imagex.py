@@ -6,6 +6,8 @@ from __future__ import annotations
 import zlib
 from typing import Tuple
 
+import io
+
 from PIL import Image
 from pypdf import PdfWriter
 from pypdf.generic import (
@@ -46,6 +48,28 @@ def add_image(writer: PdfWriter, img: Image.Image) -> Tuple[object, float, float
     stream[NameObject("/BitsPerComponent")] = NumberObject(1)
     stream[NameObject("/Decode")] = ArrayObject([FloatObject(0), FloatObject(1)])
     stream[NameObject("/Filter")] = NameObject("/FlateDecode")
+
+    ref = writer._add_object(stream)
+    return ref, float(w), float(h)
+
+
+def add_image_rgb(writer: PdfWriter, img: Image.Image, quality: int = 85):
+    """照片/截图这类连续调图：JPEG（DCTDecode）塞进去，别用 1bit 糊成黑白。"""
+    rgb = img.convert("RGB")
+    buf = io.BytesIO()
+    rgb.save(buf, "JPEG", quality=quality, optimize=True)
+    data = buf.getvalue()
+    w, h = rgb.size
+
+    stream = EncodedStreamObject()
+    stream._data = data
+    stream[NameObject("/Type")] = NameObject("/XObject")
+    stream[NameObject("/Subtype")] = NameObject("/Image")
+    stream[NameObject("/Width")] = NumberObject(w)
+    stream[NameObject("/Height")] = NumberObject(h)
+    stream[NameObject("/ColorSpace")] = NameObject("/DeviceRGB")
+    stream[NameObject("/BitsPerComponent")] = NumberObject(8)
+    stream[NameObject("/Filter")] = NameObject("/DCTDecode")
 
     ref = writer._add_object(stream)
     return ref, float(w), float(h)

@@ -25,10 +25,11 @@ from pypdf.generic import (
     FloatObject,
     NameObject,
     NumberObject,
+    TextStringObject,
 )
 
 from .config import GridSpec, MM_TO_PT
-from .imagex import add_image
+from .imagex import add_image, add_image_rgb
 from .i18n import tr
 from .parser import Card, PdfCards
 from .textlabel import TextItem, find_cjk_font, fit_size, render_text_label
@@ -63,7 +64,19 @@ class TextSticker:
         return self.item.copies
 
 
-Entry = Union[Sticker, TextSticker]
+@dataclass
+class ImageSticker:
+    """一张图片贴纸：整张图片算一张卡（照片、截图、导出的小图都行）。"""
+
+    path: str
+    copy_no: int = 1
+
+    @property
+    def total_copies(self) -> int:
+        return 1
+
+
+Entry = Union[Sticker, TextSticker, ImageSticker]
 
 
 def collect_stickers(pdfs: Sequence[PdfCards]) -> List[Sticker]:
@@ -85,6 +98,11 @@ def collect_stickers(pdfs: Sequence[PdfCards]) -> List[Sticker]:
     return out
 
 
+def collect_image_stickers(paths: Sequence[str]) -> List[ImageSticker]:
+    """每张图片一张贴纸（按给定顺序排）。"""
+    return [ImageSticker(path=p) for p in paths]
+
+
 def collect_text_stickers(items: Sequence[TextItem]) -> List[TextSticker]:
     out: List[TextSticker] = []
     for item in items:
@@ -93,9 +111,11 @@ def collect_text_stickers(items: Sequence[TextItem]) -> List[TextSticker]:
     return out
 
 
-def collect_entries(pdfs: Sequence[PdfCards], items: Sequence[TextItem] = ()) -> List[Entry]:
-    """PDF 卡片排前面，文字标签接在后面。"""
-    return list(collect_stickers(pdfs)) + list(collect_text_stickers(items))
+def collect_entries(pdfs: Sequence[PdfCards], items: Sequence[TextItem] = (),
+                    images: Sequence[str] = ()) -> List[Entry]:
+    """PDF 卡片排前面，图片其次，文字标签排最后。"""
+    return (list(collect_stickers(pdfs)) + list(collect_image_stickers(images))
+            + list(collect_text_stickers(items)))
 
 
 class _FormCache:
@@ -149,6 +169,22 @@ class _FormCache:
         name = f"/Xf{len(self._forms)}"
         self._forms[key] = (name, ref)
         return self._forms[key]
+
+
+class _ImageCache:
+    """图片贴纸：同一张图只注册一次（JPEG），按目标框等比缩放。"""
+
+    def __init__(self, writer: PdfWriter) -> None:
+        self.writer = writer
+        self._cache: Dict[str, Tuple[str, object, float, float]] = {}
+
+    def get(self, path: str) -> Tuple[str, object, float, float]:
+        if path not in self._cache:
+            with Image.open(path) as img:
+                img.load()
+                ref, w, h = add_image_rgb(self.writer, img)
+            self._cache[path] = ("/Im%d" % len(self._cache), ref, w, h)
+        return self._cache[path]
 
 
 class _TextCache:
@@ -224,6 +260,7 @@ def build_pdf(
     grid: GridSpec,
     output_path: str,
     knife_lines: bool = False,
+    marks: bool = False,
     progress=None,
     text_font: Optional[str] = None,
     text_align: str = "center",
@@ -233,6 +270,7 @@ def build_pdf(
     """生成一个 A4 标签 PDF，返回逐张标签的清单行。"""
     writer = PdfWriter()
     forms = _FormCache(writer)
+    images = _ImageCache(writer)
     texts = _TextCache(writer, font_path=text_font, align=text_align,
                        max_pt=text_max_pt, uniform=text_uniform)
     page_w, page_h = grid.frame_pt()
@@ -250,12 +288,19 @@ def build_pdf(
     for sheet in range(n_sheets):
         page = writer.add_blank_page(width=page_w, height=page_h)
         xobjects = DictionaryObject()
-        page[NameObject("/Resources")] = DictionaryObject(
-            {
-                NameObject("/ProcSet"): ArrayObject([NameObject("/PDF"), NameObject("/ImageB")]),
-                NameObject("/XObject"): xobjects,
-            }
-        )
+        res = {
+            NameObject("/ProcSet"): ArrayObject([NameObject("/PDF"), NameObject("/ImageB")]),
+            NameObject("/XObject"): xobjects,
+        }
+        if knife_lines:      # 参考版要印格子编号，得带一个基本字体
+            res[NameObject("/Font")] = DictionaryObject({
+                NameObject("/F1"): DictionaryObject({
+                    NameObject("/Type"): NameObject("/Font"),
+                    NameObject("/Subtype"): NameObject("/Type1"),
+                    NameObject("/BaseFont"): NameObject("/Helvetica"),
+                }),
+            })
+        page[NameObject("/Resources")] = DictionaryObject(res)
 
         ops = []
         if knife_lines:
@@ -269,7 +314,85 @@ def build_pdf(
                     ([_num(x0), _num(y0), _num(x1 - x0), _num(y1 - y0)], b"re"),
                     ([], b"S"),
                     ([], b"Q"),
+                    # 格子编号（1 起、行优先）：接着打时对着这张图勾哪几格用掉了
+                    ([], b"q"),
+                    ([FloatObject(0.45)], b"g"),
+                    ([], b"BT"),
+                    ([NameObject("/F1"), FloatObject(7)], b"Tf"),
+                    ([_num(x0 + 4), _num(y0 + 4)], b"Td"),
+                    ([TextStringObject(str(i + 1))], b"Tj"),
+                    ([], b"ET"),
+                    ([], b"Q"),
                 ]
+
+        if marks:      # 边距标尺：每个格子边界往纸边延伸一小段，正好对着模切线
+            mm = MM_TO_PT
+            block_w = (grid.cols - 1) * grid.pitch_x + grid.cell_w
+            block_h = (grid.rows - 1) * grid.pitch_y + grid.cell_h
+            m_top = grid.margin_top
+            m_bottom = grid.page_h - (grid.margin_top + block_h)
+            m_left = grid.margin_x
+            m_right = grid.page_w - (grid.margin_x + block_w)
+            tick_w = FloatObject(0.4)
+            ops += [([], b"q"), ([FloatObject(0.45)], b"G"),
+                    ([tick_w], b"w")]
+            # 四角 L 形对位角标：直接标出标签区的四个角
+            corner = min(max(0.8, min(m_top, m_left, m_bottom, m_right)), 3.0) * mm
+            bx0, by0 = m_left * mm, m_top * mm
+            bx1 = (m_left + block_w) * mm
+            by1 = (m_top + block_h) * mm
+            ops += [([_num(bx0 - corner), _num(page_h - by0)], b"m"),
+                    ([_num(bx0), _num(page_h - by0)], b"l"),
+                    ([_num(bx0), _num(page_h - by0)], b"m"),
+                    ([_num(bx0), _num(page_h - by0 + corner)], b"l"),
+                    ([_num(bx1 + corner), _num(page_h - by0)], b"m"),
+                    ([_num(bx1), _num(page_h - by0)], b"l"),
+                    ([_num(bx1), _num(page_h - by0)], b"m"),
+                    ([_num(bx1), _num(page_h - by0 + corner)], b"l"),
+                    ([_num(bx0 - corner), _num(page_h - by1)], b"m"),
+                    ([_num(bx0), _num(page_h - by1)], b"l"),
+                    ([_num(bx0), _num(page_h - by1)], b"m"),
+                    ([_num(bx0), _num(page_h - by1 - corner)], b"l"),
+                    ([_num(bx1 + corner), _num(page_h - by1)], b"m"),
+                    ([_num(bx1), _num(page_h - by1)], b"l"),
+                    ([_num(bx1), _num(page_h - by1)], b"m"),
+                    ([_num(bx1), _num(page_h - by1 - corner)], b"l")]
+
+            for side, margin in (("top", m_top), ("bottom", m_bottom)):
+                length = min(max(0.0, margin - 0.4), 6.0) * mm
+                if length < 1.0 * mm:
+                    continue
+                for k in range(grid.cols + 1):
+                    x = grid.margin_x + k * grid.pitch_x
+                    if k == grid.cols:
+                        x = grid.margin_x + block_w
+                    xpt = x * mm
+                    if side == "top":
+                        y0 = page_h - m_top * mm
+                        ops += [([_num(xpt), _num(y0)], b"m"),
+                                ([_num(xpt), _num(y0 + length)], b"l")]
+                    else:
+                        y0 = (m_top + block_h) * mm
+                        ops += [([_num(xpt), _num(y0)], b"m"),
+                                ([_num(xpt), _num(y0 - length)], b"l")]
+            for side, margin in (("left", m_left), ("right", m_right)):
+                length = min(max(0.0, margin - 0.4), 6.0) * mm
+                if length < 1.0 * mm:
+                    continue
+                for k in range(grid.rows + 1):
+                    y = grid.margin_top + k * grid.pitch_y
+                    if k == grid.rows:
+                        y = grid.margin_top + block_h
+                    ypt = page_h - y * mm
+                    if side == "left":
+                        x0 = m_left * mm
+                        ops += [([_num(x0), _num(ypt)], b"m"),
+                                ([_num(x0 - length), _num(ypt)], b"l")]
+                    else:
+                        x0 = (m_left + block_w) * mm
+                        ops += [([_num(x0), _num(ypt)], b"m"),
+                                ([_num(x0 + length), _num(ypt)], b"l")]
+            ops += [([], b"S"), ([], b"Q")]
 
         inset = grid.inset * MM_TO_PT
         for slot in range(per_sheet):
@@ -307,6 +430,31 @@ def build_pdf(
                     "seq": entry.card.seq if entry.card.seq is not None else "",
                     "name": entry.card.name, "qty": entry.card.qty, "copy": entry.copy_no,
                     "scale_pct": round(scale * 100, 1),
+                })
+            elif isinstance(entry, ImageSticker):
+                name, ref, iw, ih = images.get(entry.path)
+                xobjects[NameObject(name)] = ref
+                aw, ah = avail[2] - avail[0], avail[3] - avail[1]
+                if iw <= 0 or ih <= 0:                       # pragma: no cover - 坏图
+                    continue
+                fit = min(aw / iw, ah / ih)
+                dw, dh = iw * fit, ih * fit
+                dx = avail[0] + (aw - dw) / 2.0
+                dy = avail[1] + (ah - dh) / 2.0
+                ops += [
+                    ([], b"q"),
+                    ([_num(dw), FloatObject(0), FloatObject(0), _num(dh), _num(dx), _num(dy)], b"cm"),
+                    ([NameObject(name)], b"Do"),
+                    ([], b"Q"),
+                ]
+                manifest.append({
+                    "sheet": sheet + 1, "cell": slot + 1,
+                    "row": slot // grid.cols + 1, "col": slot % grid.cols + 1,
+                    "kind": tr("builder.kind.image"),
+                    "file": os.path.basename(entry.path), "pdf_page": "",
+                    "seq": "", "name": os.path.splitext(os.path.basename(entry.path))[0],
+                    "qty": 1, "copy": entry.copy_no,
+                    "scale_pct": round(fit * 100, 1),
                 })
             else:  # TextSticker
                 name, ref = texts.get(entry.item, avail[2] - avail[0], avail[3] - avail[1])
@@ -363,7 +511,9 @@ def build_all(
     base_name: Optional[str] = None,
     make_proof: bool = True,
     make_csv: bool = True,
+    marks: bool = False,
     text_items: Sequence[TextItem] = (),
+    image_paths: Sequence[str] = (),
     progress=None,
     log=None,
     text_font: Optional[str] = None,
@@ -373,7 +523,7 @@ def build_all(
 ) -> Dict[str, str]:
     """一次性生成打印版 / 网格参考版 / 清单，返回各文件路径。"""
     os.makedirs(out_dir, exist_ok=True)
-    entries = collect_entries(pdfs, text_items)
+    entries = collect_entries(pdfs, text_items, image_paths)
     if not entries:
         raise ValueError(tr("builder.err.empty"))
     base_name = base_name or tr("out.default_base")
@@ -390,7 +540,8 @@ def build_all(
         n_txt = len(entries) - n_pdf
         log(tr("builder.log.place", total=len(entries), pdf=n_pdf, text=n_txt,
                sheets=total_sheets, file=os.path.basename(prod)))
-    manifest = build_pdf(entries, grid, prod, knife_lines=False, progress=_p("production"),
+    manifest = build_pdf(entries, grid, prod, knife_lines=False, marks=marks,
+                             progress=_p("production"),
                          text_font=text_font, text_align=text_align,
                          text_max_pt=text_max_pt, text_uniform=text_uniform)
     outputs["production"] = prod
@@ -452,6 +603,7 @@ def build_partial_pdf(
 
     writer = PdfWriter()
     forms = _FormCache(writer)
+    images = _ImageCache(writer)
     texts = _TextCache(writer, font_path=text_font, align=text_align,
                        max_pt=text_max_pt, uniform=text_uniform)
     page_w, page_h = grid.frame_pt()
@@ -503,6 +655,31 @@ def build_partial_pdf(
                 "seq": entry.card.seq if entry.card.seq is not None else "",
                 "name": entry.card.name, "qty": entry.card.qty, "copy": entry.copy_no,
                 "scale_pct": round(scale * 100, 1),
+            })
+        elif isinstance(entry, ImageSticker):
+            name, ref, iw, ih = images.get(entry.path)
+            xobjects[NameObject(name)] = ref
+            aw, ah = avail[2] - avail[0], avail[3] - avail[1]
+            if iw <= 0 or ih <= 0:                           # pragma: no cover - 坏图
+                continue
+            fit = min(aw / iw, ah / ih)
+            dw, dh = iw * fit, ih * fit
+            dx = avail[0] + (aw - dw) / 2.0
+            dy = avail[1] + (ah - dh) / 2.0
+            ops += [
+                ([], b"q"),
+                ([_num(dw), FloatObject(0), FloatObject(0), _num(dh), _num(dx), _num(dy)], b"cm"),
+                ([NameObject(name)], b"Do"),
+                ([], b"Q"),
+            ]
+            manifest.append({
+                "sheet": 1, "cell": slot + 1,
+                "row": slot // grid.cols + 1, "col": slot % grid.cols + 1,
+                "kind": tr("builder.kind.image"),
+                "file": os.path.basename(entry.path), "pdf_page": "",
+                "seq": "", "name": os.path.splitext(os.path.basename(entry.path))[0],
+                "qty": 1, "copy": entry.copy_no,
+                "scale_pct": round(fit * 100, 1),
             })
         else:
             name, ref = texts.get(entry.item, avail[2] - avail[0], avail[3] - avail[1])

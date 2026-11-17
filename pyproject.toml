@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ulpp"
-version = "1.3.2"
+version = "1.3.3"
 description = "把 PDF 版面里的一块或一段文字，按份数排进 A4 标签纸；支持整版与接着打（上次没用完的胶纸），中英双语"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -20,6 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gui = ["tkinterdnd2>=0.3"]     # 想要拖拽入文件可选装
+photo = ["opencv-python-headless>=4.8"]   # 「用照片量纸」可选装（不装就只用扫描/预设）
 dev = ["pyinstaller>=6"]
 
 [project.scripts]

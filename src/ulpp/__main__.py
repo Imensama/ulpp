@@ -28,6 +28,15 @@ def main() -> int:
     from .i18n import set_language
 
     argv = sys.argv[1:]
+    if "--v2" in argv:
+        # v2 外壳（M0 骨架）：老界面完全不动，想回退就不带这个参数。
+        rest = [a for a in argv if a != "--v2"]
+        _, v2_lang = _parse_gui_args(rest)
+        set_language(v2_lang)
+        from .ui.shell import main as shell_main
+
+        return shell_main(v2_lang)
+
     if not argv:
         set_language(None)
         from .gui import main as gui_main
