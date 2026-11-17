@@ -12,7 +12,10 @@
 
 > 最初是为了摆脱手工排版的“案牍之劳形”——现在它还能自己量纸、自己记住没打完的半张。
 
-![接着打窗口](docs/example-continue.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Imensama/ulpp/main/docs/v2-home.png" width="620" alt="选纸与生成"><br>
+  <sub>选一张纸 → 放内容 → 生成（界面为 v2 预览）</sub>
+</p>
 
 ---
 
@@ -68,8 +71,10 @@ python -m ulpp -h         # 全部命令行参数
 | **中英双语** | 界面即时切换，或 `--lang zh\|en`；文件名也跟着变 |
 | **多种输入** | PDF / 文件夹 / ZIP（中文文件名自动纠正编码），装了 `tkinterdnd2` 还能拖拽 |
 
-![表格型 PDF 的效果](docs/example.png)
-![文字标签的效果](docs/example-text.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Imensama/ulpp/main/docs/example.png" width="620" alt="表格型 PDF 的效果"><br>
+  <sub>表格型 PDF：整格内容按矢量抠出来，等比缩进标签格</sub>
+</p>
 
 ---
 
@@ -127,8 +132,8 @@ python -m ulpp -h         # 全部命令行参数
 
 入口：**接着打** → 位置校准与放纸 → **不知道怎么放？用校准向导…**
 
-![位置校准向导](docs/wizard.png)
-![向导结论](docs/wizard-done.png)
+![位置校准向导](https://raw.githubusercontent.com/Imensama/ulpp/main/docs/wizard.png)
+![向导结论](https://raw.githubusercontent.com/Imensama/ulpp/main/docs/wizard-done.png)
 
 九步：选机器 → 写个大 A → 确认 A 面朝上 → 放上手送盘（带动画）→
 打一张方向测试页 → 问「字在哪一面」→ 问「TOP 箭头在哪条边」→ 结论 → 微调。
@@ -160,7 +165,13 @@ python -m ulpp --v2
 
 - **初次校准**：两屏二选一（有扫描仪 / 没有 → 有 A4 可打印 / 没有），一路下一步
 - **拍照量纸**：打印标定板 + 手机拍一张，或手动点胶纸四角（支持滚轮缩放、拖动微调）
-- **设计记录**：[`docs/design/`](docs/design/) —— 单张照片为什么只能到 0.3~0.5 mm、试错过程、方法记录
+- **设计记录**：[`docs/design/`](https://raw.githubusercontent.com/Imensama/ulpp/main/docs/design/) —— 单张照片为什么只能到 0.3~0.5 mm、试错过程、方法记录
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Imensama/ulpp/main/docs/v2-calibrate.png" width="420" alt="初次校准：二选一">
+  <img src="https://raw.githubusercontent.com/Imensama/ulpp/main/docs/v2-corners.png" width="300" alt="手动点四角">
+</p>
+<p align="center"><sub>初次校准（左）与手动点四角（右）</sub></p>
 
 ---
 
@@ -215,7 +226,7 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 
 打 tag（如 `v1.3.3`）后 GitHub Actions 自动构建并上传 Release；`publish.yml` 负责发 PyPI。
 
-目录结构与技术要点见 [`docs/design/`](docs/design/) 与源码注释。
+目录结构与技术要点见 [`docs/design/`](https://raw.githubusercontent.com/Imensama/ulpp/main/docs/design/) 与源码注释。
 
 ---
 
