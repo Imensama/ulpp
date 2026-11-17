@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import math
 import os
 import tkinter as tk
 from pathlib import Path
@@ -95,22 +96,100 @@ class CalibrateWizard(tk.Toplevel):
                          highlightbackground=P["border"], cursor="hand2",
                          command=command, wraplength=app.S(420), justify="left")
 
+    def _gradient_image(self, width, height, radius, colors, bg):
+        """生成圆角渐变按钮图（运行时画，不增加图片文件）。"""
+        from PIL import Image, ImageDraw
+
+        a, b = colors[0], colors[1]
+        grad = Image.new("RGB", (1, height))
+        px = grad.load()
+        for y in range(height):
+            t = y / max(1, height - 1)
+            px[0, y] = tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+        grad = grad.resize((width, height))
+        mask = Image.new("L", (width, height), 0)
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, width - 1, height - 1],
+                                               radius=radius, fill=255)
+        base = Image.new("RGB", (width, height), bg)
+        base.paste(grad, (0, 0), mask)
+        from PIL import ImageTk
+
+        return ImageTk.PhotoImage(base)
+
+    def _hex_rgb(self, value):
+        value = value.lstrip("#")
+        return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+
+    def _round_button(self, parent, text, command, primary, width, height=None,
+                      radius=None, size=13):
+        """Canvas 画的圆角按钮（Tk 原生按钮没法圆角）。"""
+        app, P = self.app, self.app.P
+        height = height or app.S(56)
+        radius = radius if radius is not None else app.S(12)
+        fill = P["accent"] if primary else P["card"]
+        fg = P["accent_text"] if primary else P["text"]
+        edge = P["accent"] if primary else "#9DB4B8"
+        canvas = tk.Canvas(parent, width=width, height=height, bg=P["bg"],
+                           highlightthickness=0, cursor="hand2")
+        r = min(radius, height / 2 - 1)
+
+        def _round_points():
+            pts = []
+            corners = ((width - r, r, -90, 0), (width - r, height - r, 0, 90),
+                       (r, height - r, 90, 180), (r, r, 180, 270))
+            for cx, cy, a0, a1 in corners:
+                for i in range(9):
+                    ang = math.radians(a0 + (a1 - a0) * i / 8.0)
+                    pts.extend([cx + r * math.cos(ang), cy + r * math.sin(ang)])
+            return pts
+
+        def shape(color):
+            return canvas.create_polygon(_round_points(), fill=color, outline=edge,
+                                         width=1 if primary else 2)
+
+        gradient = os.environ.get("ULPP_GRAD", "off") if primary else ""
+        if gradient in ("", "off", "0", "no"):
+            gradient = ""
+        if gradient:
+            c1 = P["accent"]
+            c2 = P.get("accent2") or P["accent"]
+            photo = self._gradient_image(int(width), int(height), int(r),
+                                         (self._hex_rgb(c1), self._hex_rgb(c2)),
+                                         self._hex_rgb(P["bg"]))
+            canvas.create_image(0, 0, anchor="nw", image=photo)
+            canvas.image = photo
+            body = canvas.create_polygon(_round_points(), fill="", outline=edge, width=1)
+        else:
+            body = shape(fill)
+        label = canvas.create_text(width / 2, height / 2, text=text, fill=fg,
+                                   font=app.F(size, True))
+        for item in (body, label):
+            canvas.tag_bind(item, "<Button-1>", lambda _e: command())
+        canvas.tag_bind(body, "<Enter>", lambda _e: canvas.itemconfigure(body, fill=edge))
+        canvas.tag_bind(body, "<Leave>", lambda _e: canvas.itemconfigure(body, fill=fill))
+        return canvas
+
     def _choice(self, parent, left_text, left_cmd, right_text, right_cmd):
-        """左右二选一：按钮固定大小、靠左排，右边留白。"""
+        """左右二选一：两个按钮平分内容宽度。"""
         app, P = self.app, self.app.P
         row = tk.Frame(parent, bg=P["bg"])
         row.pack(side="bottom", fill="x", pady=(0, app.S(6)), anchor="w")
-        # 两个按钮平分内容宽度，左右对称
         available = app.S(647) - 2 * app.S(44)
-        card_w = int((available - app.S(14)) / 2)
+        gap = app.S(14)
+        card_w = int((available - gap) / 2)
+        style = os.environ.get("ULPP_SHAPE", "round")
         for i, (text, cmd, primary) in enumerate(
                 ((left_text, left_cmd, True), (right_text, right_cmd, False))):
-            edge = P["accent"] if primary else "#94A3B8"
-            card = tk.Frame(row, bg=edge, width=card_w, height=app.S(58))
-            card.pack(side="left", padx=(0, app.S(14)) if i == 0 else (0, 0))
-            card.pack_propagate(False)
-            btn = self._button(card, text, cmd, kind="solid" if primary else "ghost", size=12)
-            btn.pack(fill="both", expand=True, padx=2, pady=2)
+            holder = tk.Frame(row, bg=P["bg"])
+            holder.pack(side="left", padx=(0, gap) if i == 0 else (0, 0))
+            if style == "round":
+                self._round_button(holder, text, cmd, primary, card_w).pack()
+            else:
+                edge = P["accent"] if primary else "#9DB4B8"
+                card = tk.Frame(holder, bg=edge, width=card_w, height=app.S(58))
+                card.pack(); card.pack_propagate(False)
+                btn = self._button(card, text, cmd, kind="solid" if primary else "ghost", size=13)
+                btn.pack(fill="both", expand=True, padx=2, pady=2)
         return row
 
     def _option(self, parent, title, desc, command, primary=False):

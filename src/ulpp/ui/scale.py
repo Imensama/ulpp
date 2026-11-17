@@ -52,15 +52,16 @@ TEAL.update(
     name="teal", bg="#F1F6F5", card="#FFFFFF", text="#123035", muted="#5D7B82",
     border="#C7D8D6", accent="#E4572E", accent_text="#FFFFFF",
     soft="#FDEBE4", soft_text="#9A3412", dot_done="#F7B267", chip="#F7FBFA",
+    accent2="#FF9A62",
 )
 # GMK Aero 风味：官方说"用 5 个 GMK 标准色复刻 Vista Aero"——浅青 TU2 / 深青 TU1 /
 # 白 CP / 亮黄 N6 / 灰 2B。直接用原色做小字按钮会花，所以主按钮压深一档保对比度。
 AERO = dict(LIGHT)
 AERO.update(
-    name="aero", bg="#F2FAFB", card="#FFFFFF", text="#123A40", muted="#5E7C82",
-    border="#C6E3E4", accent="#00959A", accent_text="#FFFFFF",
-    soft="#DFF3F3", soft_text="#00626A", dot_done="#5FD0D4", chip="#F7FCFD",
-    green="#2E7D6B",
+    name="aero", bg="#F8FCFD", card="#FFFFFF", text="#123A40", muted="#6A868B",
+    border="#D7EAEB", accent="#14A6AB", accent_text="#FFFFFF",
+    soft="#E8F6F7", soft_text="#0A5C64", dot_done="#6FD6DA", chip="#FBFEFE",
+    green="#2E7D6B", accent2="#6FD6DA",
 )
 AERO_CHIPS = {"CP 白": "#F5F5F5", "TU2 浅青": "#00A4A9", "TU1 深青": "#00627A",
               "N6 亮黄": "#E5A100", "2B 灰": "#858A8D"}
