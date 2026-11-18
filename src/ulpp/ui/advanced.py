@@ -129,13 +129,16 @@ class AdvancedDialog(tk.Toplevel):
         if hasattr(base, "to_dict"):            # 已经是我的纸：沿用名字，不再叠后缀
             name = base.name
         else:                                    # 预设 → 包成模板，名字标一下改
+            from dataclasses import replace
+
             from .texts import TEXTS as _T
-            names = {code: (base.display_name(code) if base.name_i18n else base.name)
-                     + _T[code]["tpl.suffix_edited"] for code in ("zh_CN", "en_US")}
+            names = {code: (base.title_in(code) if hasattr(base, "title_in")
+                            else base.name) + _T[code]["tpl.suffix_edited"]
+                     for code in ("zh_CN", "en_US")}
             name = names[self.app.lang]
-            name_i18n = names
             base = Template.from_grid(base.to_grid(), name=name,
                                       source="preset:" + getattr(base, "key", "x"))
+            base = replace(base, name_i18n=names)
         try:
             tpl = adjusted(base, name=name, dx_mm=dx, dy_mm=dy,
                            **{k: v for k, v in numbers.items()})

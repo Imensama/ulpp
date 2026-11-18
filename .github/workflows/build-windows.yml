@@ -45,7 +45,7 @@ jobs:
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: exe-${{ github.ref_name }}
+          name: exe-${{ github.event.pull_request.number || github.ref_name }}
           path: dist/*.exe
           if-no-files-found: error
 
@@ -73,12 +73,12 @@ jobs:
       - name: 压缩
         shell: pwsh
         run: |
-          Compress-Archive -Path "dist/ulpp2/*" -DestinationPath "ulpp-${{ github.ref_name }}-full-windows-x64.zip"
+          Compress-Archive -Path "dist/ulpp2/*" -DestinationPath "ulpp-${{ github.event.pull_request.number || github.ref_name }}-full-windows-x64.zip"
       - name: 取回轻量 exe 的构建产物
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/download-artifact@v4
         with:
-          name: exe-${{ github.ref_name }}
+          name: exe-${{ github.event.pull_request.number || github.ref_name }}
           path: dist
       - name: 发版（只有打 tag 时）
         if: startsWith(github.ref, 'refs/tags/v')

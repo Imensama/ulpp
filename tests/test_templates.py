@@ -19,6 +19,36 @@ def sample(**kw):
     return Template(**base)
 
 
+class BilingualNameTests(unittest.TestCase):
+    """v1.4.1：模板名中英双语存储；老数据没有 name_i18n 时回落 name。"""
+
+    def test_display_name_prefers_language_variant(self):
+        t = sample(name="5×9 实测", name_i18n={"zh_CN": "5×9 实测",
+                                               "en_US": "5×9 measured"})
+        self.assertEqual(t.display_name("zh_CN"), "5×9 实测")
+        self.assertEqual(t.display_name("en_US"), "5×9 measured")
+        self.assertEqual(t.display_name("fr_FR"), "5×9 实测")
+
+    def test_display_name_falls_back_to_name(self):
+        t = sample(name="老模板")
+        self.assertEqual(t.name_i18n, {})
+        self.assertEqual(t.display_name("en_US"), "老模板")
+        self.assertEqual(t.display_name(), "老模板")
+
+    def test_name_i18n_survives_dict_roundtrip(self):
+        t = sample(name="5×9 实测", name_i18n={"zh_CN": "5×9 实测",
+                                               "en_US": "5×9 measured"})
+        back = Template.from_dict(t.to_dict())
+        self.assertEqual(back.name_i18n, t.name_i18n)
+        self.assertEqual(back.display_name("en_US"), "5×9 measured")
+
+    def test_label_uses_requested_language(self):
+        t = sample(name="5×9 实测", name_i18n={"zh_CN": "5×9 实测",
+                                               "en_US": "5×9 measured"})
+        self.assertIn("measured", t.label("en_US"))
+        self.assertIn("实测", t.label("zh_CN"))
+
+
 class TemplateTests(unittest.TestCase):
     def test_to_grid(self):
         g = sample().to_grid()
