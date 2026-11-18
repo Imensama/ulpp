@@ -64,6 +64,9 @@ python -m PyInstaller --noconfirm packaging/ulpp_onedir.spec
 - Windows 沙箱里：`%APPDATA%` 只读、`tempfile.mkdtemp()` 建的目录不可写（用 `os.makedirs`）、
   目录删不掉（测试别用 `TemporaryDirectory`）。
 - 拍照量纸的精度上限由**纸的平整度**决定（0.3~0.6 mm），不是算力；详见 `docs/design/photo-measurement.md`。
+- **断言“不存在”前必须先查**（2026-11-18 踩过）：我按旧知识断言 `actions/checkout@v7` 和
+  Python 3.15 不存在，实际两者都已发布——外部事实（版本、API 行为、字段名）必须现场查证
+  （`web_search`/`web_fetch` 或本地实测），查不到就写“未核实”，不要凭记忆下结论。
 - PDF 解析里"相邻两格文字坐标重叠"会把两张卡粘成一张：取词必须同时尝试
   `use_text_flow=True/False` 并取锚点多的那份。
 

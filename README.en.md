@@ -19,8 +19,6 @@ on Windows just double-click the exe.
   <sub>Pick a sheet → add content → generate (v2 preview UI)</sub>
 </p>
 
-See [`ROADMAP.md`](ROADMAP.md); contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
 ---
 
 ## Contents
