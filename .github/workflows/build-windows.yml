@@ -90,13 +90,14 @@ jobs:
           generate_release_notes: true
           append_body: true
           body: |
-            ## 下载哪个？
+            ## 下载哪个？ / Which file?
 
-            | 文件 | 说明 |
+            | 文件 / File | 说明 / Notes |
             |---|---|
-            | `ulpp-<tag>-full-windows-x64.zip` | **推荐**：全功能，含拍照量纸（解压后双击 `启动 v2.bat`） |
-            | `ulpp.exe` | 轻量单文件（约 36 MB），**不含 OpenCV**，拍照量纸不可用 |
+            | `ulpp-${{ github.ref_name }}-full-windows-x64.zip` | **推荐 / Recommended** · 全功能，含拍照量纸（解压后双击 `启动 v2.bat`）<br>Full build with photo measurement — unzip and run `启动 v2.bat` |
+            | `ulpp.exe` | 轻量单文件（约 36 MB），**不含 OpenCV**，拍照量纸不可用<br>Lightweight single exe (~36 MB), **no OpenCV**, photo measurement unavailable |
 
             > 两者都能跑扫描量纸、预设、出图、接着打；区别只在拍照量纸。
+            > Both support scan-based measuring, presets, output and resuming a half-used sheet; only photo measurement differs.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
