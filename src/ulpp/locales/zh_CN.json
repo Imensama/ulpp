@@ -243,5 +243,16 @@
   "partial.text.cancel": "取消",
   "entry.error_title": "通用标签打印平台",
   "entry.error_body": "程序出错了：\n\n{error}\n\n详细日志：ulpp.log",
-  "partial.window_title": "接着打 — 上次没用完的胶纸"
+  "partial.window_title": "接着打 — 上次没用完的胶纸",
+  "scan.err.pdf_no_image": "PDF 第一页里没有图片（可能是矢量页，不是扫描件）",
+  "scan.err.no_lattice": "图里没有等距结构，量不出格阵（是不是扫得太淡？）",
+  "scan.err.fold_failed": "折叠拟合失败，重新扫一张（300 dpi、灰度）",
+  "scan.err.no_a4_edges": "没找到整张 A4 的四条边：把纸单独放在深色桌面上、四边都拍进来、别裁边",
+  "scan.err.unreadable": "读不了这张图：{path}",
+  "scan.err.too_few_marks": "标定板上的黑方块太少：板要整张拍进去、别有反光",
+  "scan.err.marks_off_grid": "标定板方块对不上网格：整张板拍进来、别有遮挡",
+  "scan.err.no_sheet": "没找到胶纸：把胶纸和标定板并排平放（别叠、别出画面）",
+  "scan.err.no_board_marks": "没认出标定板上的黑方块：确认打印的是程序给的标定板、整张拍进来、别有反光",
+  "scan.err.no_paper_edges": "找不到两张纸的边：把标定板和胶纸并排放在「深色桌面」上，中间留条缝、四边都拍进来",
+  "scan.err.board_not_recognized": "没认出标定板：整张板拍进来、别让反光盖住方块"
 }

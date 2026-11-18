@@ -30,6 +30,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "theme": "外观：{name}",
         "light": "浅色",
         "mono": "黑白",
+        "aero": "青色",
         "step_of": "{title}  ·  第 {n} 步 / 共 {total} 步",
         "cancel": "取消",
         "proto_note": "不写你的配置，随便点",
@@ -104,7 +105,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "title": "Calibration",
         "app": "Universal Label Printing Platform",
         "theme": "Theme: {name}",
-        "light": "Light", "mono": "Mono",
+        "light": "Light", "mono": "Mono", "aero": "Teal",
         "step_of": "{title}  ·  Step {n} of {total}",
         "cancel": "Cancel",
         "proto_note": "Your settings are not written yet — click freely",
@@ -172,6 +173,13 @@ LIGHT = dict(
     chip="#E8EEF7", dot_off="#D3DBE6", dot_done="#9DB7E8", green="#16A34A",
     btn2="#FFFFFF",
 )
+# v2 外壳用的青色（与 GMK Aero 主题一致），只换强调色，结构不变
+AERO = dict(LIGHT)
+AERO.update(name="aero", bg="#F8FCFD", card="#FFFFFF", border="#D7EAEB",
+            text="#123A40", muted="#6A868B", accent="#14A6AB", accent_text="#FFFFFF",
+            soft="#E8F6F7", soft_text="#0A5C64", chip="#F1FAFB",
+            dot_off="#D7EAEB", dot_done="#6FD6DA", btn2="#FFFFFF")
+
 MONO = dict(
     name="mono", bg="#FFFFFF", card="#FFFFFF", border="#111111", text="#000000",
     muted="#444444", accent="#000000", accent_text="#FFFFFF", soft="#F1F1F1",
@@ -212,7 +220,7 @@ class CalibrationWizard(tk.Toplevel):
 
     def __init__(self, master, profile: PrinterProfile,
                  on_save: Optional[Callable[[str, float, float], None]] = None,
-                 output_dir: Optional[str] = None):
+                 output_dir: Optional[str] = None, palette: Optional[str] = None):
         super().__init__(master)
         self.profile = profile
         self.on_save = on_save
@@ -222,6 +230,7 @@ class CalibrationWizard(tk.Toplevel):
         self.z = max(1.0, round(float(self.tk.call("tk", "scaling")) / BASE_SCALING, 3))
         self.img_px = 980 if self.z >= 1.4 else 560
         self.theme_key = "light"
+        self.palette_key = palette or "light"     # aero：v2 外壳传进来
         self.step = 1
         self.face = None            # "up" / "down"
         self.edge = None            # "short" / "long"
@@ -259,6 +268,8 @@ class CalibrationWizard(tk.Toplevel):
 
     @property
     def TH(self):
+        if self.palette_key == "aero":
+            return AERO
         return LIGHT if self.theme_key == "light" else MONO
 
     def img(self, name):
@@ -335,6 +346,7 @@ class CalibrationWizard(tk.Toplevel):
         getattr(self, "step%d" % self.step)()
 
     def toggle_theme(self):
+        self.palette_key = ""                     # 手动切外观后不再强制用 aero
         self.theme_key = "mono" if self.theme_key == "light" else "light"
         self.go(self.step)
 

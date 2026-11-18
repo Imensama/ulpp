@@ -129,7 +129,7 @@ class AdvancedDialog(tk.Toplevel):
         if hasattr(base, "to_dict"):            # 已经是我的纸：沿用名字，不再叠后缀
             name = base.name
         else:                                    # 预设 → 包成模板，名字标一下改
-            name = screens._name(base) + "（改）"
+            name = screens._name(base) + self.app.T("tpl.suffix_edited")
             base = Template.from_grid(base.to_grid(), name=name,
                                       source="preset:" + getattr(base, "key", "x"))
         try:

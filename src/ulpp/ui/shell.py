@@ -79,7 +79,7 @@ class Shell:
         self.make_csv = tk.BooleanVar(value=bool(a.get("csv", True)))
         self.make_marks = tk.BooleanVar(value=bool(a.get("marks", False)))
         self.out_dir = tk.StringVar(value=str(a.get("out_dir", "")))
-        self.base_name = tk.StringVar(value=str(a.get("base_name", "标签")))
+        self.base_name = tk.StringVar(value=str(a.get("base_name", self.T("base_name.default"))))
         self.measurement = None       # 最近一次量出来的结果（还没存成模板）
         self.scan_error: Optional[str] = None
         self.scan_source = ""
@@ -131,11 +131,24 @@ class Shell:
                  bg=P["bg"]).pack(side="left")
         tk.Label(head, text="  " + self.T("badge"), font=self.F(9), fg=P["soft_text"],
                  bg=P["soft"], padx=S(8), pady=S(2)).pack(side="left", padx=(S(8), 0))
-        tk.Button(head, text=self.T("adv.button"), font=self.F(9), fg=P["muted"],
+        adv_btn = tk.Button(head, text=self.T("adv.button"), font=self.F(9), fg=P["muted"],
                   bg=P["card"], relief="flat", bd=0, padx=S(10), pady=S(4),
                   highlightthickness=1, highlightbackground=P["border"],
-                  cursor="hand2", command=self.open_advanced).pack(
-            side="right", padx=(0, S(12)))
+                  cursor="hand2", command=self.open_advanced)
+        adv_btn.pack(side="right", padx=(0, S(12)))
+
+        # 中 / EN 分段开关（直角、1px 描边，跟旁边按钮同高）
+        lang_box = tk.Frame(head, bg=P["card"], highlightthickness=1,
+                            highlightbackground=P["border"])
+        lang_box.pack(side="right", padx=(0, S(10)))
+        for code, label in (("zh_CN", self.T("lang.zh")), ("en_US", self.T("lang.en"))):
+            active = self.lang == code
+            lbl = tk.Label(lang_box, text=label, font=self.F(9, True),
+                           fg=P["accent_text"] if active else P["muted"],
+                           bg=P["accent"] if active else P["card"],
+                           padx=S(9), pady=S(3), cursor="hand2")
+            lbl.pack(side="left")
+            lbl.bind("<Button-1>", lambda _e, c=code: self.switch_lang(c))
         tk.Label(head, text="v%s" % __version__, font=self.F(9), fg=P["muted"],
                  bg=P["bg"]).pack(side="right", padx=(0, S(10)))
         self._headline = tk.Label(head, text="", font=self.F(10), fg=P["muted"],
@@ -159,6 +172,22 @@ class Shell:
         self._progress = ttk.Progressbar(status_row, mode="determinate", length=S(220))
         self._worker = None
         self._queue: "queue.Queue" = queue.Queue()
+
+    def switch_lang(self, code: str) -> None:
+        """界面内切换中英：重建头部与内容，状态和已填写的内容都不丢。"""
+        if code == self.lang:
+            return
+        old_default = self.T("base_name.default")
+        self.lang = code
+        set_language(code)
+        self.tx = _texts(code)
+        if self.base_name.get().strip() in (old_default, "标签", "label"):
+            self.base_name.set(self.T("base_name.default"))
+        for child in self.root.winfo_children():
+            child.destroy()
+        self.root.title("%s v%s" % (self.T("app"), __version__))
+        self._build()
+        self.render()
 
     @staticmethod
     def _clear(frame: tk.Frame) -> None:
@@ -411,7 +440,7 @@ class Shell:
                     pass
             self.render()
 
-        CalibrationWizard(self.root, profile=profile, on_save=on_save,
+        CalibrationWizard(self.root, palette="aero", profile=profile, on_save=on_save,
                           output_dir=os.getcwd())
 
     # ------------------------------------------------------------ 内容 / 输出

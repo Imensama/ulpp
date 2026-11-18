@@ -214,6 +214,20 @@ class CalibrateWizard(tk.Toplevel):
                  bg=self.app.P["bg"], anchor="w", justify="left",
                  wraplength=self.app.S(560)).pack(fill="x")
 
+    def _center(self, make, note: str = ""):
+        """在居中的一行里放按钮：make(parent) 负责用给定父级创建控件。"""
+        row = tk.Frame(self.body, bg=self.app.P["bg"])
+        row.pack(fill="x", pady=(self.app.S(16), 0))
+        inner = tk.Frame(row, bg=self.app.P["bg"])
+        inner.pack(anchor="center")
+        widget = make(inner)
+        widget.configure(padx=self.app.S(34))       # 主按钮放宽一点，别显得局促
+        widget.pack(pady=self.app.S(2))
+        if note:
+            tk.Label(row, text=note, font=self.app.F(9), fg=self.app.P["muted"],
+                     bg=self.app.P["bg"]).pack(anchor="center", pady=(self.app.S(6), 0))
+        return widget
+
     def _line(self, text, color=None, font_size=11):
         tk.Label(self.body, text=text, font=self.app.F(font_size),
                  fg=color or self.app.P["muted"], bg=self.app.P["bg"], anchor="w",
@@ -297,12 +311,11 @@ class CalibrateWizard(tk.Toplevel):
         self._title(app.T("calib.scan_title"), size=20)
         self._line(app.T("calib.scan_body"))
         self._line(app.T("calib.scan_tip"), font_size=10)
-        scan_btn = self._button(self.body, app.T("calib.scan_pick"), self.pick_scan,
-                                kind="solid")
-        scan_btn.pack(anchor="w", pady=(app.S(18), 0))
+        scan_btn = self._center(
+            lambda parent: self._button(parent, app.T("calib.scan_pick"),
+                                        self.pick_scan, kind="solid"),
+            note=app.T("calib.drop_hint"))
         app.bind_drop(scan_btn, self._drop_scan)
-        tk.Label(self.body, text=app.T("calib.drop_hint"), font=app.F(9),
-                 fg=app.P["muted"], bg=app.P["bg"]).pack(anchor="w")
         if self.error:
             self._line(app.T("calib.fail", err=self.error), color="#B91C1C", font_size=10)
         self._button(self.foot, app.T("calib.back_ask"), lambda: self.go("ask"),
@@ -313,9 +326,9 @@ class CalibrateWizard(tk.Toplevel):
         self._title(app.T("calib.print_title"), size=20)
         self._line(app.T("calib.print_body"))
         self._line(app.T("calib.print_tip"), font_size=10)
-        btn = self._button(self.body, app.T("calib.print_board"), self.save_board,
-                           kind="solid")
-        btn.pack(anchor="w", pady=(app.S(18), 0))
+        btn = self._center(
+            lambda parent: self._button(parent, app.T("calib.print_board"),
+                                        self.save_board, kind="solid"))
         if self.error:
             self._line(app.T("calib.fail", err=self.error), color="#B91C1C", font_size=10)
         self._button(self.foot, app.T("calib.back_prev"), lambda: self.go("paper"),
@@ -329,10 +342,12 @@ class CalibrateWizard(tk.Toplevel):
         self._line(app.T("calib.backlight"), font_size=10)
         row = tk.Frame(self.body, bg=app.P["bg"])
         row.pack(fill="x", pady=(app.S(16), 0))
-        btn = self._button(row, app.T("calib.shoot_btn"), self.pick_photo, kind="solid")
+        inner = tk.Frame(row, bg=app.P["bg"])
+        inner.pack(anchor="center")
+        btn = self._button(inner, app.T("calib.shoot_btn"), self.pick_photo, kind="solid")
         btn.pack(side="left")
         app.bind_drop(btn, self._drop_photo)
-        self._button(row, app.T("calib.help"), lambda: CartoonHelp(app),
+        self._button(inner, app.T("calib.help"), lambda: CartoonHelp(app),
                      kind="ghost", size=10).pack(side="left", padx=(app.S(10), 0))
         if self.error:
             self._line(app.T("calib.fail", err=self.error), color="#B91C1C", font_size=10)
@@ -344,9 +359,9 @@ class CalibrateWizard(tk.Toplevel):
         self._title(app.T("calib.plain_title"), size=20)
         self._line(app.T("calib.fallback_warn"), color=WARN_COLOR, font_size=10)
         self._line(app.T("calib.shoot_body"))
-        btn = self._button(self.body, app.T("calib.shoot_btn"), self.pick_photo_plain,
-                           kind="warn")
-        btn.pack(anchor="w", pady=(app.S(16), 0))
+        btn = self._center(
+            lambda parent: self._button(parent, app.T("calib.shoot_btn"),
+                                        self.pick_photo_plain, kind="warn"))
         app.bind_drop(btn, self._drop_plain)
         if self.error:
             self._line(app.T("calib.fail", err=self.error), color="#B91C1C", font_size=10)
@@ -600,10 +615,12 @@ class CalibrateWizard(tk.Toplevel):
             tk.Label(self.body, text="\n".join(m.warnings), font=app.F(9),
                      fg=app.P["muted"], bg=app.P["bg"], anchor="w", justify="left",
                      wraplength=app.S(560)).pack(fill="x", pady=(app.S(8), 0))
-        self._button(self.foot, app.T("calib.save"), self.save_template,
-                     kind="solid", size=12).pack(side="right")
-        self._button(self.foot, app.T("calib.again"), self.back_to_pick,
-                     kind="ghost", size=10).pack(side="right", padx=(0, app.S(10)))
+        inner = tk.Frame(self.foot, bg=self.app.P["bg"])
+        inner.pack(anchor="center")
+        self._button(inner, app.T("calib.again"), self.back_to_pick,
+                     kind="ghost", size=10).pack(side="left", padx=(0, app.S(10)))
+        self._button(inner, app.T("calib.save"), self.save_template,
+                     kind="solid", size=12).pack(side="left")
 
     # ------------------------------------------------------------ 动作
     def go(self, step: str) -> None:
@@ -707,7 +724,7 @@ class CalibrateWizard(tk.Toplevel):
 
         path = filedialog.asksaveasfilename(
             title=self.app.T("calib.print_board"), defaultextension=".pdf",
-            initialfile="ulpp标定板.pdf", filetypes=[("PDF", "*.pdf")], parent=self)
+            initialfile=self.app.T("calib.board_filename"), filetypes=[("PDF", "*.pdf")], parent=self)
         if not path:
             return
         try:

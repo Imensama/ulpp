@@ -9,6 +9,8 @@
 """
 from __future__ import annotations
 
+from .i18n import tr
+
 from typing import Optional, Sequence, Tuple
 
 from PIL import Image
@@ -83,7 +85,7 @@ def find_paper_quad(bgr, max_side: int = 1400):
             if len(approx) == 4:
                 quad = _order_quad(approx)
                 return quad / scale
-    raise ValueError("没找到整张 A4 的四条边：把纸单独放在深色桌面上、四边都拍进来、别裁边")
+    raise ValueError(tr("scan.err.no_a4_edges"))
 
 
 def rectify_to_a4(bgr, quad, dpi: int = PHOTO_DPI) -> Image.Image:
@@ -109,7 +111,7 @@ def measure_photo(path: str, expect_cols: Optional[int] = None,
     data = np.fromfile(path, dtype=np.uint8)      # 兼容中文路径
     bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
     if bgr is None:
-        raise ValueError("读不了这张图：%s" % path)
+        raise ValueError(tr("scan.err.unreadable", path=path))
     quad = find_paper_quad(bgr)
     page = rectify_to_a4(bgr, quad, dpi=dpi)
     warnings = ["photo: 这是照片量的，误差通常 0.3~1 mm；dpi=%d" % dpi]

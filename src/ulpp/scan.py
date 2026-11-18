@@ -17,6 +17,8 @@
 """
 from __future__ import annotations
 
+from .i18n import tr
+
 import statistics
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -73,7 +75,7 @@ def _load(path: str) -> Tuple[Image.Image, float, float, float, List[str]]:
         page_h = float(box.height) * 25.4 / 72.0
         images = list(page.images)
         if not images:
-            raise ValueError("PDF 第一页里没有图片（可能是矢量页，不是扫描件）")
+            raise ValueError(tr("scan.err.pdf_no_image"))
         img = images[0].image.convert("L")
         dpi = img.width / (page_w / 25.4)
         return img, page_w, page_h, dpi, warnings
@@ -362,11 +364,11 @@ def measure_image(img: Image.Image, page_w_mm: float, page_h_mm: float, dpi: flo
     base_x = _period_autocorr(col_prof, pmin_x / mm_per_px, pmax_x / mm_per_px)
     base_y = _period_autocorr(row_prof, pmin_y / mm_per_px, pmax_y / mm_per_px)
     if base_x is None or base_y is None:
-        raise ValueError("图里没有等距结构，量不出格阵（是不是扫得太淡？）")
+        raise ValueError(tr("scan.err.no_lattice"))
     col = _lattice_fit(col_prof, base_x)
     row = _lattice_fit(row_prof, base_y)
     if not col or not row:
-        raise ValueError("折叠拟合失败，重新扫一张（300dpi、灰度）")
+        raise ValueError(tr("scan.err.fold_failed"))
 
     pitch_x = col["period"] * mm_per_px
     pitch_y = row["period"] * mm_per_px

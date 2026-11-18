@@ -67,6 +67,33 @@ python -m PyInstaller --noconfirm packaging/ulpp_onedir.spec
 - PDF 解析里"相邻两格文字坐标重叠"会把两张卡粘成一张：取词必须同时尝试
   `use_text_flow=True/False` 并取锚点多的那份。
 
+
+## 发版检查清单（打 tag 前逐条过）
+
+1. **版本号三处一致**：`pyproject.toml`、`src/ulpp/__init__.py`、tag 名（`v1.4.1` ↔ `1.4.1`），
+   否则 `publish.yml` 的校验会直接失败。
+2. **脱敏**：
+   - 仓库里不能有客户图纸、真实扫描件、截图里的公司名/型号；
+   - 不能出现 `C:\Users\...` 这类本机路径；
+   - 打包产物里不能带 `ulpp.log`、`v2_flow.json`、`templates.json`、测试脚本；
+   - README 里的图片用 `raw.githubusercontent.com/...` 绝对链接（相对路径在 PyPI 上是破图）。
+3. **双语**：新增/修改的文案必须同时写 `zh_CN` 和 `en_US`（`tests/test_v2_texts.py` 会校验 key 与占位符）；
+   **禁止在界面代码里硬编码中文**（错误信息、默认文件名也算），要进文案表。
+4. **本地验证**：`python -m unittest discover -s tests -t .` 全绿；界面至少手点一遍主流程。
+5. **先提交、再打 tag**：tag 一旦推送就会发 PyPI，而 PyPI 不可覆盖；改完必须重新发版本号。
+6. **Release 附件**：轻量 `ulpp.exe`（无 OpenCV）+ 全功能 `ulpp-<tag>-full-windows-x64.zip`（含 OpenCV），
+   发版说明里写清“下载哪个”（中英双语）。
+
+## 交付方式（每轮工作结束都要做）
+
+用户不会记上下文，隔天回来只想要「复制 → 运行 → 看结果」。所以每次收尾必须给：
+
+1. **绝对路径**：文件在哪、产物在哪，别写“工作区里那个文件”。
+2. **可复制的命令块**：一条一条，带**预期输出**（比如 `Ran 153 tests ... OK`）。
+3. **验收清单**：点哪里、看到什么算通过，3~5 条就够。
+4. **提交与发版**：commit message 原文、要不要打 tag、打完去哪看结果。
+5. 如果中间需要用户做选择，给**编号选项 + 推荐项**，不要开放式提问。
+
 ## 测试约定
 
 - 只用 `unittest`，不加新依赖。

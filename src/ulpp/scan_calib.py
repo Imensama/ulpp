@@ -13,6 +13,8 @@
 """
 from __future__ import annotations
 
+from .i18n import tr
+
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -264,7 +266,7 @@ def _homography_from_marks(marks):
     cv2 = _cv2()
     pts = _filter_grid_marks(marks).astype("float32")
     if len(pts) < 8:
-        raise ValueError("标定板上的黑方块太少：板要整张拍进去、别有反光")
+        raise ValueError(tr("scan.err.too_few_marks"))
     s = pts.sum(axis=1)
     d = np.diff(pts, axis=1).reshape(-1)
     corners = np.array([pts[np.argmin(s)], pts[np.argmin(d)],
@@ -291,7 +293,7 @@ def _homography_from_marks(marks):
         if matrix is None:
             break
     if chosen is None:
-        raise ValueError("标定板方块对不上网格：整张板拍进来、别有遮挡")
+        raise ValueError(tr("scan.err.marks_off_grid"))
     return matrix, chosen
 
 
@@ -350,7 +352,7 @@ def _find_sheet_region(canvas, origin, px_per_mm: float):
         best = rect
         break
     if best is None:
-        raise ValueError("没找到胶纸：把胶纸和标定板并排平放（别叠、别出画面）")
+        raise ValueError(tr("scan.err.no_sheet"))
     return best
 
 
@@ -385,27 +387,27 @@ def measure_photo_calibrated(path: str, expect_cols: Optional[int] = None,
     data = np.fromfile(path, dtype=np.uint8)
     bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
     if bgr is None:
-        raise ValueError("读不了这张图：%s" % path)
+        raise ValueError(tr("scan.err.unreadable", path=path))
 
     marks = find_marks(bgr)
     if len(marks) < 30:
-        raise ValueError("没认出标定板上的黑方块：确认打印的是程序给的标定板、整张拍进来、别有反光/反光条")
+        raise ValueError(tr("scan.err.no_board_marks"))
     matrix, (img_pts, mm_pts) = _homography_from_marks(marks)
     k1, k2, err = estimate_distortion(img_pts, mm_pts, bgr.shape)
 
     fixed = undo_distortion(bgr, k1, k2)
     quads = find_quads(fixed)
     if len(quads) < 2:
-        raise ValueError("找不到两张纸的边：把标定板和胶纸并排放在**深色桌面**上，中间留条缝、四边都拍进来")
+        raise ValueError(tr("scan.err.no_paper_edges"))
     marks2 = find_marks(fixed)
     scored = sorted(((_inside(q, marks2), q) for q in quads), key=lambda t: t[0], reverse=True)
     board_score, board = scored[0]
     if board_score < 20:
-        raise ValueError("没认出标定板：整张板拍进来、别让反光盖住方块")
+        raise ValueError(tr("scan.err.board_not_recognized"))
     board_area = float(cv2.contourArea(np.asarray(board, dtype="float32")))
     sheet = _pick_sheet(quads, marks2, board_area)
     if sheet is None:
-        raise ValueError("没找到胶纸：把胶纸和标定板并排平放（别叠、别出画面）")
+        raise ValueError(tr("scan.err.no_sheet"))
 
     page = rectify_to_a4(fixed, sheet, dpi=dpi)
     warnings = (
@@ -441,7 +443,7 @@ def measure_photo_corners(path: str, corners, expect_cols: Optional[int] = None,
     data = np.fromfile(path, dtype=np.uint8)
     bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
     if bgr is None:
-        raise ValueError("读不了这张图：%s" % path)
+        raise ValueError(tr("scan.err.unreadable", path=path))
     pts = np.asarray(corners, dtype="float32").reshape(4, 2)
 
     k1, err = 0.0, 0.0

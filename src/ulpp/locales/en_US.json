@@ -243,5 +243,16 @@
   "partial.text.cancel": "Cancel",
   "entry.error_title": "Universal Label Printing Platform",
   "entry.error_body": "Something went wrong:\n\n{error}\n\nDetails: ulpp.log",
-  "partial.window_title": "Continue — previously used sheets"
+  "partial.window_title": "Continue — previously used sheets",
+  "scan.err.pdf_no_image": "The first PDF page has no image (vector page, not a scan)",
+  "scan.err.no_lattice": "No evenly spaced structure found — is the scan too faint?",
+  "scan.err.fold_failed": "Lattice fit failed; rescan at 300 dpi, grayscale",
+  "scan.err.no_a4_edges": "Could not find the four edges of the A4 sheet: put it alone on a dark surface, all edges in frame, no cropping",
+  "scan.err.unreadable": "Cannot read this image: {path}",
+  "scan.err.too_few_marks": "Too few black squares detected: capture the whole calibration board, avoid glare",
+  "scan.err.marks_off_grid": "Board squares do not match the grid: capture the whole board, nothing covering it",
+  "scan.err.no_sheet": "Label sheet not found: place it beside the calibration board (no overlap, fully in frame)",
+  "scan.err.no_board_marks": "Calibration board not recognised: print the one from this app, capture it fully, avoid glare",
+  "scan.err.no_paper_edges": "Paper edges not found: put the board and the sheet on a dark surface, small gap, all four edges in frame",
+  "scan.err.board_not_recognized": "Board not recognised: capture the whole board and keep glare off the squares"
 }
