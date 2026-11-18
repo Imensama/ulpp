@@ -55,7 +55,7 @@ UI 用例的约定：
 本机（macOS，Python 3.9，Tk 8.5.9，numpy/OpenCV 已装）：
 
 ```text
-Ran 750 tests in ~50s
+Ran 756 tests in ~50s
 TOTAL  5959 statements  13 missed  99%
 ```
 
@@ -101,6 +101,10 @@ CI 上剩余 8 行不是“没写用例”，而是三类环境相关分支：
 因此 Linux / macOS / Windows 三条线都会跑同一套 unittest。`tests.yml` 还有一个
 quality job：在 Linux 上跑 `scripts/quality_gate.py`（compileall + 覆盖率 +
 指标棘轮 + 变异抽查），产物上传为 `quality-gate-report` artifact。
+
+另有一个独立的 **language switch checkpoint** job：在 Xvfb 下只跑
+`tests/test_language_switch.py`，确认语言控件在布局里、候选语言齐全，并且
+选中另一种语言后标题/状态栏/主按钮文案真的换掉（防止“控件在但没接线”）。
 
 Fork PR 的评论权限可能被 GitHub 限制，所以评论步骤设了 `continue-on-error`；
 测试和覆盖率门槛仍然会正常判定。
