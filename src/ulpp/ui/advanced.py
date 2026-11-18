@@ -12,6 +12,7 @@ from typing import Dict, Optional, Tuple
 
 from ..templates import Template, adjusted
 from . import screens
+from .buttons import AppButton
 
 FIELDS: Tuple[Tuple[str, str], ...] = (
     ("cols", "adv.cols"), ("rows", "adv.rows"),
@@ -85,8 +86,10 @@ class AdvancedDialog(tk.Toplevel):
 
         foot = tk.Frame(wrap, bg=P["bg"])
         foot.pack(fill="x", pady=(S(12), 0))
-        ttk.Button(foot, text=app.T("adv.cancel"), command=self.destroy).pack(side="right")
-        ttk.Button(foot, text=app.T("adv.save"), command=self._save).pack(
+        AppButton(foot, app.T("adv.cancel"), self.destroy, button_type="cancel",
+                  palette=app.P, font=app.F, scale=app.S).pack(side="right")
+        AppButton(foot, app.T("adv.save"), self._save, button_type="submit",
+                  palette=app.P, font=app.F, scale=app.S).pack(
             side="right", padx=(0, S(10)))
 
         self.update_idletasks()

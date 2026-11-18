@@ -14,6 +14,7 @@ from . import __version__
 from .builder import build_all
 from .cli import expand_inputs
 from .config import GridSpec
+from .ui.buttons import AppButton
 from .i18n import (
     available_languages,
     current_language,
@@ -93,11 +94,11 @@ class App:
 
         btns = ttk.Frame(files_frame)
         btns.pack(fill="x", padx=8, pady=(0, 8))
-        ttk.Button(btns, text=tr("gui.btn.add_pdf"), command=self.add_pdfs).pack(side="left")
-        ttk.Button(btns, text=tr("gui.btn.add_folder"), command=self.add_folder).pack(side="left", padx=6)
-        ttk.Button(btns, text=tr("gui.btn.add_zip"), command=self.add_zip).pack(side="left")
-        ttk.Button(btns, text=tr("gui.btn.clear"), command=self.clear_files).pack(side="right")
-        ttk.Button(btns, text=tr("gui.btn.remove"), command=self.remove_selected).pack(side="right", padx=6)
+        AppButton(btns, tr("gui.btn.add_pdf"), self.add_pdfs, button_type="info").pack(side="left")
+        AppButton(btns, tr("gui.btn.add_folder"), self.add_folder, button_type="info").pack(side="left", padx=6)
+        AppButton(btns, tr("gui.btn.add_zip"), self.add_zip, button_type="info").pack(side="left")
+        AppButton(btns, tr("gui.btn.clear"), self.clear_files, button_type="warning").pack(side="right")
+        AppButton(btns, tr("gui.btn.remove"), self.remove_selected, button_type="cancel").pack(side="right", padx=6)
 
         # 文字标签
         text_frame = ttk.LabelFrame(self.root, text=tr("gui.text_frame"))
@@ -134,7 +135,7 @@ class App:
         row2.pack(fill="x", padx=8, pady=2)
         ttk.Label(row2, text=tr("gui.out_dir")).pack(side="left")
         ttk.Entry(row2, textvariable=self.out_dir).pack(side="left", fill="x", expand=True, padx=4)
-        ttk.Button(row2, text=tr("gui.btn.browse"), command=self.choose_out_dir).pack(side="left")
+        AppButton(row2, tr("gui.btn.browse"), self.choose_out_dir, button_type="info").pack(side="left")
 
         row3 = ttk.Frame(opt)
         row3.pack(fill="x", padx=8, pady=2)
@@ -183,12 +184,14 @@ class App:
         self.lang_cb.pack(side="right", padx=(8, 0))
         self.lang_cb.bind("<<ComboboxSelected>>", self._on_lang_selected)
         ttk.Label(bottom, text=tr("gui.lang.label")).pack(side="right")
-        self.partial_btn = ttk.Button(bottom, text=tr("gui.btn.continue"), command=self.open_partial)
+        self.partial_btn = AppButton(bottom, tr("gui.btn.continue"), self.open_partial, button_type="info")
         self.partial_btn.pack(side="right", padx=(8, 0))
-        self.open_btn = ttk.Button(bottom, text=tr("gui.btn.open_out"),
-                                   command=self.open_out_dir, state="disabled")
+        self.open_btn = AppButton(bottom, tr("gui.btn.open_out"),
+                                  self.open_out_dir, button_type="info",
+                                  state="disabled")
         self.open_btn.pack(side="right", padx=(8, 0))
-        self.start_btn = ttk.Button(bottom, text=tr("gui.btn.start"), command=self.start)
+        self.start_btn = AppButton(bottom, tr("gui.btn.start"), self.start,
+                                   button_type="submit")
         self.start_btn.pack(side="right", padx=8)
         self.progress = ttk.Progressbar(bottom, mode="determinate", length=200)
         self.progress.pack(side="right", padx=8)
@@ -239,7 +242,7 @@ class App:
         if text:
             self.text_box.insert("1.0", text)
         if open_state == "normal":
-            self.open_btn.configure(state="normal")
+            self.open_btn.set_state("normal")
         self.progress.configure(value=0, maximum=100)
         self.status.set(tr("gui.status.ready"))
         self._log(tr("gui.log.lang_switched", lang=language_name(code)))
@@ -363,8 +366,8 @@ class App:
             messagebox.showerror(tr("app.name"), str(exc))
             return
 
-        self.start_btn.configure(state="disabled")
-        self.open_btn.configure(state="disabled")
+        self.start_btn.set_state("disabled")
+        self.open_btn.set_state("disabled")
         self.lang_cb.configure(state="disabled")
         self.progress.configure(value=0, maximum=100)
         self.status.set(tr("gui.status.parsing"))
@@ -421,8 +424,8 @@ class App:
                 elif kind == "done":
                     outs = item[1]
                     self.status.set(tr("gui.status.done"))
-                    self.open_btn.configure(state="normal")
-                    self.start_btn.configure(state="normal")
+                    self.open_btn.set_state("normal")
+                    self.start_btn.set_state("normal")
                     self.lang_cb.configure(state="readonly")
                     self._log(tr("gui.log.done"))
                     for k, v in outs.items():
@@ -433,7 +436,7 @@ class App:
                     )
                 elif kind == "error":
                     self.status.set(tr("gui.status.error"))
-                    self.start_btn.configure(state="normal")
+                    self.start_btn.set_state("normal")
                     self.lang_cb.configure(state="readonly")
                     self._log(item[1])
                     messagebox.showerror(tr("app.name"), str(item[1]).splitlines()[0])
