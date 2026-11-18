@@ -17,6 +17,8 @@
   <sub>选一张纸 → 放内容 → 生成（界面为 v2 预览）</sub>
 </p>
 
+路线图见 [`ROADMAP.md`](ROADMAP.md)，想帮忙先看 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+
 ---
 
 ## 目录
@@ -224,7 +226,7 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 # 产物：dist\ulpp.exe（单文件）；v2 带 OpenCV 的用 packaging\ulpp_v2.spec
 ```
 
-打 tag（如 `v1.3.3`）后 GitHub Actions 自动构建并上传 Release；`publish.yml` 负责发 PyPI。
+打 tag（如 `v1.4.1`）后 GitHub Actions 自动构建并上传 Release；`publish.yml` 负责发 PyPI。
 
 目录结构与技术要点见 [`docs/design/`](https://raw.githubusercontent.com/Imensama/ulpp/main/docs/design/) 与源码注释。
 
