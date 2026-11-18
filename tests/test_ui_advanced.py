@@ -68,6 +68,8 @@ class AdvancedDialogTests(UiCase):
         self.assertAlmostEqual(tpl.origin_x_mm, 3.5)
         self.assertAlmostEqual(tpl.origin_y_mm, 4.0)
         self.assertIn("改", tpl.name)
+        self.assertIn("改", tpl.name_i18n["zh_CN"])
+        self.assertIn("edited", tpl.name_i18n["en_US"])
         self.assertTrue(tpl.source.startswith("preset:"))
 
     def test_save_existing_template_keeps_name(self):

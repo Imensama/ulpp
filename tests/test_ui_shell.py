@@ -268,9 +268,11 @@ class WizardEntryTests(UiCase):
         captured = {}
 
         class FakeWizard:
-            def __init__(self, master, profile=None, on_save=None, output_dir=None):
+            def __init__(self, master, profile=None, on_save=None,
+                         output_dir=None, palette=None):
                 captured.update(master=master, profile=profile,
-                                on_save=on_save, output_dir=output_dir)
+                                on_save=on_save, output_dir=output_dir,
+                                palette=palette)
 
         import ulpp.wizard as wizard_mod
 
@@ -291,7 +293,8 @@ class WizardEntryTests(UiCase):
         captured = {}
 
         class FakeWizard:
-            def __init__(self, master, profile=None, on_save=None, output_dir=None):
+            def __init__(self, master, profile=None, on_save=None,
+                         output_dir=None, palette=None):
                 captured["on_save"] = on_save
 
         import ulpp.wizard as wizard_mod
@@ -309,7 +312,8 @@ class WizardEntryTests(UiCase):
         captured = {}
 
         class FakeWizard:
-            def __init__(self, master, profile=None, on_save=None, output_dir=None):
+            def __init__(self, master, profile=None, on_save=None,
+                         output_dir=None, palette=None):
                 captured.update(profile=profile, on_save=on_save)
 
         import ulpp.wizard as wizard_mod

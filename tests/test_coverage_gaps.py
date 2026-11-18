@@ -465,7 +465,8 @@ class ShellGuardTests(UiCase):
         captured = {}
 
         class FakeWizard:
-            def __init__(self, master, profile=None, on_save=None, output_dir=None):
+            def __init__(self, master, profile=None, on_save=None,
+                         output_dir=None, palette=None):
                 captured["profile"] = profile
 
         import ulpp.wizard as wizard_mod2
