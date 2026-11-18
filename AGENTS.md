@@ -83,6 +83,11 @@ python -m PyInstaller --noconfirm packaging/ulpp_onedir.spec
 5. **先提交、再打 tag**：tag 一旦推送就会发 PyPI，而 PyPI 不可覆盖；改完必须重新发版本号。
 6. **Release 附件**：轻量 `ulpp.exe`（无 OpenCV）+ 全功能 `ulpp-<tag>-full-windows-x64.zip`（含 OpenCV），
    发版说明里写清“下载哪个”（中英双语）。
+7. **README 截图与渲染**：界面动过就重新截图（`docs/v2-*.png` 用绝对 raw 链接引用）；
+   发版后要真的打开看一眼——
+   - GitHub 首页：图片、徽章、目录锚点是否正常；
+   - PyPI 项目页：描述里的图片是否显示（**PyPI 描述只在发新版时更新**，改 README 不会自动生效）；
+   - Release 页：附件名、下载说明是否与正文一致。
 
 ## 交付方式（每轮工作结束都要做）
 

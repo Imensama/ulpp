@@ -152,7 +152,7 @@ def build_sheet(app, body) -> None:
     tk.Label(row, text=app.T("sheet.label"), font=app.F(11), fg=app.P["muted"],
              bg=app.P["card"]).pack(side="left")
 
-    choices = [app.T("sheet.tpl_marked", name=t.label()) for t in app.templates.items]
+    choices = [app.T("sheet.tpl_marked", name=t.label(app.lang)) for t in app.templates.items]
     choices += [p.title for p in PRESETS]
     disp = app.keep(tk.StringVar(value=_display(app, item)))
     combo = _combo(app, row, choices, disp)

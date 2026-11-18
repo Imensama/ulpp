@@ -55,6 +55,8 @@ class Template:
     confidence: float = 1.0       # 扫描得到的置信度；手填 = 1.0
     source: str = "manual"        # preset:45 / scan:文件名 / manual
     created: str = field(default_factory=lambda: time.strftime("%Y-%m-%d %H:%M"))
+    # 建模板时记下中英双语名字；老数据没有这个字段，回落到 name
+    name_i18n: Dict[str, str] = field(default_factory=dict)
 
     @property
     def count(self) -> int:
@@ -71,9 +73,13 @@ class Template:
             inset=self.inset_mm,
         )
 
-    def label(self) -> str:
-        return "%s（%d×%d · %.1f×%.1f）" % (
-            self.name, self.cols, self.rows, self.pitch_x_mm, self.pitch_y_mm)
+    def display_name(self, lang: str = "zh_CN") -> str:
+        return self.name_i18n.get(lang) or self.name
+
+    def label(self, lang: str = "zh_CN") -> str:
+        pattern = "%s (%d×%d · %.1f×%.1f)" if lang == "en_US" else "%s（%d×%d · %.1f×%.1f）"
+        return pattern % (self.display_name(lang), self.cols, self.rows,
+                          self.pitch_x_mm, self.pitch_y_mm)
 
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
@@ -85,6 +91,7 @@ class Template:
         try:
             return cls(
                 id=str(data["id"]), name=str(data.get("name") or data["id"]),
+                name_i18n=dict(data.get("name_i18n") or {}),
                 cols=int(data["cols"]), rows=int(data["rows"]),
                 cell_w_mm=float(data["cell_w_mm"]), cell_h_mm=float(data["cell_h_mm"]),
                 pitch_x_mm=float(data["pitch_x_mm"]), pitch_y_mm=float(data["pitch_y_mm"]),

@@ -746,8 +746,12 @@ class CalibrateWizard(tk.Toplevel):
         from ..templates import Template
 
         grid = self._grid()
+        from .texts import TEXTS as _T
+
+        names = {code: _T[code]["calib.tpl_name"].format(cols=m.cols, rows=m.rows)
+                 for code in ("zh_CN", "en_US")}
         tpl = Template(
-            id=Template.new_id("calib"), name=app.T("calib.tpl_name", cols=m.cols, rows=m.rows),
+            id=Template.new_id("calib"), name=names[app.lang], name_i18n=names,
             cols=m.cols, rows=m.rows,
             cell_w_mm=m.cell_w_mm, cell_h_mm=m.cell_h_mm,
             pitch_x_mm=m.pitch_x_mm, pitch_y_mm=m.pitch_y_mm,
