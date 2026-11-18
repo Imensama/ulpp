@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from ulpp.gui import App
 from ulpp.i18n import (available_languages, current_language, language_name,
@@ -105,6 +106,100 @@ class LanguageControlTests(UiCase):
         app._on_lang_selected()
         self.assertEqual(app.lang_display.get(), before)
         self.assertEqual(current_language(), "zh_CN")
+
+
+class V2ShellLanguageTests(UiCase):
+    """v2 外壳头部的 中 / EN 语言按钮（`Shell.switch_lang`）。"""
+
+    def _shell(self, lang="zh_CN"):
+        shell = self.make_shell(lang=lang)
+        return shell
+
+    @staticmethod
+    def _labels(widget):
+        out = []
+
+        def walk(node):
+            for child in node.winfo_children():
+                if child.winfo_class() == "Label":
+                    try:
+                        out.append(child)
+                    except Exception:
+                        pass
+                walk(child)
+
+        walk(widget)
+        return out
+
+    def test_language_buttons_visible_and_clickable(self):
+        shell = self._shell()
+        labels = self._labels(shell.root)
+        texts = [lbl.cget("text") for lbl in labels]
+        self.assertIn(shell.T("lang.zh"), texts)
+        self.assertIn(shell.T("lang.en"), texts)
+        for lbl in labels:
+            if lbl.cget("text") in (shell.T("lang.zh"), shell.T("lang.en")):
+                self.assertEqual(lbl.winfo_manager(), "pack")
+                self.assertTrue(lbl.bind("<Button-1>"),
+                                "语言按钮没有绑定点击事件")
+
+    def test_switch_to_english_rebuilds_texts(self):
+        shell = self._shell()
+        zh_next = shell.T("next")
+        shell.switch_lang("en_US")
+        self.pump()
+        self.assertEqual(shell.lang, "en_US")
+        self.assertEqual(current_language(), "en_US")
+        self.assertNotEqual(shell.T("next"), zh_next)
+        self.assertIn("Universal", shell.root.title())
+        texts = [lbl.cget("text") for lbl in self._labels(shell.root)]
+        self.assertIn(shell.T("lang.en"), texts)
+        self.assertIn(shell.T("lang.zh"), texts)
+        # 保存过的内容不丢
+        self.assertTrue(shell._editor.winfo_exists())
+
+    def test_same_language_is_noop(self):
+        shell = self._shell()
+        with mock.patch.object(shell, "_build") as build:
+            shell.switch_lang(shell.lang)
+        build.assert_not_called()
+        self.assertEqual(shell.lang, "zh_CN")
+
+    def test_default_base_name_follows_language(self):
+        shell = self._shell()
+        self.assertEqual(shell.base_name.get(), shell.T("base_name.default"))
+        shell.switch_lang("en_US")
+        self.pump()
+        self.assertEqual(shell.base_name.get(), "label")
+        shell.switch_lang("zh_CN")
+        self.pump()
+        self.assertEqual(shell.base_name.get(), "标签")
+
+    def test_custom_base_name_is_not_overwritten(self):
+        shell = self._shell()
+        shell.base_name.set("我的名字")
+        shell.switch_lang("en_US")
+        self.pump()
+        self.assertEqual(shell.base_name.get(), "我的名字")
+
+    def test_typed_content_survives_switch(self):
+        shell = self._shell()
+        shell.content_text = "用户输入"
+        shell.switch_lang("en_US")
+        self.pump()
+        self.assertEqual(shell.content_text, "用户输入")
+
+    def test_attach_text_box_dnd_binding(self):
+        from ulpp.ui import shell as shell_mod
+
+        shell = self._shell()
+        fake = mock.Mock()
+        fake.get.return_value = ""
+        with mock.patch.object(shell_mod, "_HAS_DND", True), \
+                mock.patch.object(shell_mod, "DND_FILES", "Files"):
+            shell.attach_text_box(fake)
+        fake.drop_target_register.assert_called_once_with("Files")
+        fake.dnd_bind.assert_called_once()
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -52,7 +52,7 @@ class SheetScreenTests(UiCase):
                         "下拉框没有绑定选择事件（真界面里点了不会换纸）")
         idx = len(shell.templates.items) + len(PRESETS) - 1
         combo.current(idx)
-        screens._pick_combination(shell, combo)
+        screens._on_pick_combination(shell, combo)   # 事件处理器的真实入口
         self.pump()
         self.assertEqual(shell.flow.answer("paper"),
                          PRESETS[len(PRESETS) - 1].key)

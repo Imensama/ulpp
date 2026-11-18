@@ -82,6 +82,11 @@ def _pick_combination(app, combo) -> None:
     app.render()
 
 
+def _on_pick_combination(app, combo, _event=None) -> None:
+    """下拉框事件处理器（单独一层方便测试，不依赖 Tk 事件投递）。"""
+    _pick_combination(app, combo)
+
+
 def _selected(app):
     key = str(app.flow.answer("paper") or "")
     if key.startswith("tpl:"):
@@ -181,10 +186,8 @@ def build_sheet(app, body) -> None:
     app._wizard_button(row, app.T("calib.new_paper"), app.open_calibrate).pack(
         side="left", padx=(app.S(18), 0))
 
-    def on_pick(_event=None):
-        _pick_combination(app, combo)
-
-    combo.bind("<<ComboboxSelected>>", on_pick)
+    combo.bind("<<ComboboxSelected>>",
+               lambda _e: _on_pick_combination(app, combo))
 
     # 量出来的结果：单独一条横幅
     if app.measurement is not None:

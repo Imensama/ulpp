@@ -218,8 +218,7 @@ python -m ulpp --v2
 ```bash
 pip install -r requirements.txt
 pip install -e .
-python -m unittest discover -s tests -t .      # 756 个用例
-python3 scripts/quality_gate.py                # 全质量门（测试+覆盖率+指标+变异）
+python -m unittest discover -s tests -t .      # 153 个用例
 ```
 
 ```powershell

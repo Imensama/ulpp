@@ -23,7 +23,7 @@ def _fake_img(self, name):
 
 
 class WizardCase(UiCase):
-    def _wizard(self, profile=None, on_save=None, patch_img=True):
+    def _wizard(self, profile=None, on_save=None, patch_img=True, palette=None):
         profile = profile or PrinterProfile()
         patcher = None
         if patch_img:
@@ -31,11 +31,11 @@ class WizardCase(UiCase):
             patcher.start()
             self.addCleanup(patcher.stop)
             wiz = CalibrationWizard(self.root, profile, on_save=on_save,
-                                    output_dir=str(self.tmpdir))
+                                    output_dir=str(self.tmpdir), palette=palette)
         else:
             with mock.patch.object(CalibrationWizard, "img", _fake_img):
                 wiz = CalibrationWizard(self.root, profile, on_save=on_save,
-                                        output_dir=str(self.tmpdir))
+                                        output_dir=str(self.tmpdir), palette=palette)
         self.pump()
         self.close_later(wiz)
         return wiz
@@ -52,6 +52,11 @@ class BasicsTests(WizardCase):
         self.assertIn(wiz.fam, wiz.f(10)[0])
         self.assertEqual(len(wiz.fp(20)), 2)
         self.assertIs(wiz.TH, wizard_mod.LIGHT)
+
+    def test_aero_palette_is_used(self):
+        wiz = self._wizard(palette="aero")
+        self.assertEqual(wiz.palette_key, "aero")
+        self.assertIs(wiz.TH, wizard_mod.AERO)
 
     def test_theme_toggle_rebuilds_in_mono_and_back(self):
         wiz = self._wizard()
