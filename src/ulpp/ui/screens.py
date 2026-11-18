@@ -63,6 +63,25 @@ def _combo(app, parent, values: List[str], var) -> tk.Widget:
 
 
 # ---------------------------------------------------------------- 选择与文案
+def _pick_combination(app, combo) -> None:
+    """下拉框选中某一项：模板 → tpl:<id>，预设 → 预设 key。
+
+    做成模块级函数而不是嵌套闭包：测试可以直接走这条真实路径，
+    不依赖 Tk 的 <<ComboboxSelected>> 事件投递（Aqua 下对 withdraw 窗口不投递）。
+    """
+    idx = combo.current()
+    if idx < 0:
+        return
+    if idx < len(app.templates.items):
+        chosen = app.templates.items[idx]
+        app.flow.answer("paper", "tpl:" + chosen.id)
+    else:
+        chosen = PRESETS[idx - len(app.templates.items)]
+        app.flow.answer("paper", chosen.key)
+    app.on_change()
+    app.render()
+
+
 def _selected(app):
     key = str(app.flow.answer("paper") or "")
     if key.startswith("tpl:"):
@@ -163,17 +182,7 @@ def build_sheet(app, body) -> None:
         side="left", padx=(app.S(18), 0))
 
     def on_pick(_event=None):
-        idx = combo.current()
-        if idx < 0:
-            return
-        if idx < len(app.templates.items):
-            chosen = app.templates.items[idx]
-            app.flow.answer("paper", "tpl:" + chosen.id)
-        else:
-            chosen = PRESETS[idx - len(app.templates.items)]
-            app.flow.answer("paper", chosen.key)
-        app.on_change()
-        app.render()
+        _pick_combination(app, combo)
 
     combo.bind("<<ComboboxSelected>>", on_pick)
 

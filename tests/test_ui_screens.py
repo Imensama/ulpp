@@ -48,9 +48,11 @@ class SheetScreenTests(UiCase):
         shell = self.make_shell()
         combo = _find(shell.root, "TCombobox")
         self.assertIsNotNone(combo)
+        self.assertTrue(combo.bind("<<ComboboxSelected>>"),
+                        "下拉框没有绑定选择事件（真界面里点了不会换纸）")
         idx = len(shell.templates.items) + len(PRESETS) - 1
         combo.current(idx)
-        combo.event_generate("<<ComboboxSelected>>")
+        screens._pick_combination(shell, combo)
         self.pump()
         self.assertEqual(shell.flow.answer("paper"),
                          PRESETS[len(PRESETS) - 1].key)
@@ -60,7 +62,7 @@ class SheetScreenTests(UiCase):
         combo = _find(shell.root, "TCombobox")
         before = shell.flow.answer("paper")
         combo.set("手写的值")
-        combo.event_generate("<<ComboboxSelected>>")
+        screens._pick_combination(shell, combo)
         self.pump()
         self.assertEqual(shell.flow.answer("paper"), before)
 
@@ -73,7 +75,7 @@ class SheetScreenTests(UiCase):
         shell.render()
         combo = _find(shell.root, "TCombobox")
         combo.current(0)
-        combo.event_generate("<<ComboboxSelected>>")
+        screens._pick_combination(shell, combo)
         self.pump()
         self.assertEqual(shell.flow.answer("paper"), "tpl:" + tpl.id)
 
