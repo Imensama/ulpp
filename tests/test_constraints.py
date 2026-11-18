@@ -75,6 +75,26 @@ class TkOnlyConstraintTests(unittest.TestCase):
                     offenders.append("%s: import %s" % (path.name, name))
         self.assertEqual(offenders, [])
 
+    def test_no_raw_buttons_outside_button_module(self):
+        """全应用只能通过 ui/buttons.py 的 AppButton 建按钮。"""
+        offenders = []
+        for path in _py_files():
+            if path.name == "buttons.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not isinstance(func, ast.Attribute) or func.attr != "Button":
+                    continue
+                owner = func.value
+                if isinstance(owner, ast.Name) and owner.id in ("tk", "ttk"):
+                    offenders.append("%s:%d: %s"
+                                     % (path.relative_to(SRC), node.lineno,
+                                        ast.unparse(node)[:60]))
+        self.assertEqual(offenders, [], "请改用 ui.buttons.AppButton")
+
     def test_tkinter_is_imported_somewhere(self):
         """界面层确实用的是 tkinter（防手滑删掉整个 UI）。"""
         found = any(

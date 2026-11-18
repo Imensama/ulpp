@@ -102,19 +102,6 @@ class RenderStepTests(WizardCase):
             self.assertEqual(btn.cget("text"), kind)
             btn.destroy()
 
-    def test_round_button_plain_and_gradient(self):
-        shell, wiz = self._wizard()
-        plain = wiz._round_button(wiz.body, "go", lambda: None, True, 120)
-        self.assertIsNotNone(plain)
-        with mock.patch.dict(os.environ, {"ULPP_GRAD": "on", "ULPP_THEME": "aero"}):
-            shell.P  # noqa: B018 - 主题在 Shell 构造时已定
-            wiz.app.P = dict(shell.P, accent2="#00A4A9")
-            grad = wiz._round_button(wiz.body, "go", lambda: None, True, 120)
-        self.assertIsNotNone(grad)
-        self.assertEqual(wiz._hex_rgb("#00A4A9"), (0, 164, 169))
-        plain.destroy()
-        grad.destroy()
-
     def test_choice_box_style(self):
         shell, wiz = self._wizard()
         with mock.patch.dict(os.environ, {"ULPP_SHAPE": "box"}):

@@ -1,12 +1,15 @@
 # 按钮体系：单一 `AppButton` + 固定语义样式
 
-这份是**实施计划**（还没动代码）。目标：全应用只允许一种按钮构造方式，
+**状态：已实施（P1–P3 完成，P4 剩视觉/键盘微调）。**
+
+目标：全应用只允许一种按钮构造方式，
 样式固定在类内部，调用方只能用 `button_type` 选 5 种语义之一，避免每个界面
 各写一套 `tk.Button(...)` 然后颜色/字号/内边距慢慢漂移。
 
 ## 1. 现状盘点
 
-`grep "tk.Button\|ttk.Button" src/ulpp`：**47 处，分布在 8 个模块**。
+实施前 `grep "tk.Button\|ttk.Button" src/ulpp`：**47 处，分布在 8 个模块**；
+实施后只剩 `ui/buttons.py` 一处（其余全部改用 `AppButton`）。
 
 | 模块 | 处数 | 现在怎么建按钮 |
 |---|---:|---|
@@ -82,14 +85,14 @@ class ButtonContext(Protocol):
 
 ## 3. 落地阶段
 
-### P0 盘点与护栏（0.5 天）
+### P0 盘点与护栏（已完成）
 
 - 写 `scripts/button_inventory.py`：ast 扫描 `tk.Button`/`ttk.Button`/自定义
   `_button()` 的调用点，输出 `模块:行:类型` 表格（先只报告，不阻断）；
 - 存一份 v2 主界面截图 + v1 主界面截图作为视觉基线；
 - 把 `docs/design/button-system.md`（本文）挂到 README 索引。
 
-### P1 类与测试（0.5 天）
+### P1 类与测试（已完成）
 
 - 实现 `AppButton` + `ButtonType`；
 - 单元测试（不建窗的映射测试 + 建窗冒烟）：
@@ -99,7 +102,7 @@ class ButtonContext(Protocol):
   - 主题切换后颜色来自新调色板。
 - **CI 检查点**：`tests/test_buttons.py`（新增独立 job，同语言检查点）。
 
-### P2 迁移（按模块，1~2 天）
+### P2 迁移（已完成）
 
 顺序（先 v2，后 v1；先低风险，后主界面）：
 
@@ -114,7 +117,7 @@ class ButtonContext(Protocol):
 
 每个模块迁移后跑该模块的 UI 测试 + 截图对比；不允许"先合代码后补测试"。
 
-### P3 强制（0.5 天）
+### P3 强制（已完成）
 
 - 在 `tests/test_constraints.py` 增加：
   ```python
@@ -126,7 +129,7 @@ class ButtonContext(Protocol):
   每项带 issue 编号，P3 结束清零）；
 - CI 失败信息直接给出 `file:line`，修起来明确。
 
-### P4 收尾
+### P4 收尾（剩余）
 
 - 删除旧的 `_button` / `_wizard_button` / `_round_button` / `_gradient_image`；
 - 键盘可达性：Tab 顺序、空格/回车触发、焦点环；
