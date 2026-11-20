@@ -218,7 +218,7 @@ python -m ulpp --v2
 ```bash
 pip install -r requirements.txt
 pip install -e .
-python -m unittest discover -s tests -t .      # 153 个用例
+python -m unittest discover -s tests -t .      # 768 个用例
 ```
 
 ```powershell

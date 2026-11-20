@@ -223,7 +223,7 @@ Not generated; whatever exists in the source PDF is carried over as-is.
 ```bash
 pip install -r requirements.txt
 pip install -e .
-python -m unittest discover -s tests -t .      # 153 tests
+python -m unittest discover -s tests -t .      # 768 tests
 ```
 
 ```powershell
