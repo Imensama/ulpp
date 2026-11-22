@@ -20,6 +20,8 @@ from ..partial import plan_placements
 from ..sheets import SheetStore
 from ..textlabel import parse_text_block
 
+from .buttons import AppButton
+
 CELL_FREE = "#FFFFFF"
 CELL_USED = "#D8DEE9"
 CELL_LINE = "#94A3B8"
@@ -159,16 +161,21 @@ class PartialWindow(tk.Toplevel):
                 fill="x", pady=(S(8), 0))
 
         # ---- 页脚 ----
-        ttk.Button(self._foot, text=app.T("partial.close"),
-                   command=self.destroy).pack(side="right")
+        AppButton(self._foot, app.T("partial.close"), self.destroy,
+                  button_type="cancel", palette=app.P, font=app.F,
+                  scale=app.S, size="md").pack(side="right")
         if self.output_path:
-            ttk.Button(self._foot, text=app.T("partial.open"),
-                       command=self._open).pack(side="right", padx=(0, S(8)))
-        ttk.Button(self._foot, text=app.T("partial.new"),
-                   command=self._on_new).pack(side="left")
+            AppButton(self._foot, app.T("partial.open"), self._open,
+                      button_type="info", palette=app.P, font=app.F,
+                      scale=app.S, size="md").pack(side="right", padx=(0, S(8)))
+        AppButton(self._foot, app.T("partial.new"), self._on_new,
+                  button_type="info", palette=app.P, font=app.F,
+                  scale=app.S, size="md").pack(side="left")
         if self.sheet is not None and self.sheet.free_count:
-            ttk.Button(self._foot, text=app.T("partial.gen"),
-                       command=self.generate).pack(side="right", padx=(0, S(8)))
+            AppButton(self._foot, app.T("partial.gen"), self.generate,
+                      button_type="submit", palette=app.P, font=app.F,
+                      scale=app.S, size="md").pack(side="right",
+                                                  padx=(0, S(8)))
 
     def _draw_grid(self) -> None:
         app, S = self.app, self.app.S

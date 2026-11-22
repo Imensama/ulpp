@@ -24,6 +24,7 @@ from ..sheets import PrinterProfile, SheetStore
 from ..templates import Template, TemplateStore
 from ..textlabel import parse_text_block
 from . import screens
+from .buttons import AppButton
 from .texts import TEXTS as _TEXTS, texts as _texts
 from .flow import Flow, state_path
 from .scale import Metrics, enable_dpi_awareness
@@ -131,11 +132,9 @@ class Shell:
                  bg=P["bg"]).pack(side="left")
         tk.Label(head, text="  " + self.T("badge"), font=self.F(9), fg=P["soft_text"],
                  bg=P["soft"], padx=S(8), pady=S(2)).pack(side="left", padx=(S(8), 0))
-        adv_btn = tk.Button(head, text=self.T("adv.button"), font=self.F(9), fg=P["muted"],
-                  bg=P["card"], relief="flat", bd=0, padx=S(10), pady=S(4),
-                  highlightthickness=1, highlightbackground=P["border"],
-                  cursor="hand2", command=self.open_advanced)
-        adv_btn.pack(side="right", padx=(0, S(12)))
+        AppButton(head, self.T("adv.button"), self.open_advanced,
+                  button_type="info", palette=P, font=self.F, scale=S,
+                  size="sm").pack(side="right", padx=(0, S(12)))
 
         # 中 / EN 分段开关（直角、1px 描边，跟旁边按钮同高）
         lang_box = tk.Frame(head, bg=P["card"], highlightthickness=1,
@@ -229,23 +228,18 @@ class Shell:
 
         self._clear(self._footer)
         if not self.flow.is_first:
-            tk.Button(self._footer, text=self.T("prev"), font=self.F(12), fg=P["text"],
-                      bg=P["card"], relief="flat", bd=0, padx=S(18), pady=S(11),
-                      cursor="hand2",
-                      highlightthickness=1, highlightbackground=P["border"],
-                      command=self.prev_step).pack(side="left")
+            AppButton(self._footer, self.T("prev"), self.prev_step,
+                      button_type="cancel", palette=P, font=self.F, scale=S,
+                      size="md").pack(side="left")
         if not self.flow.is_last:
-            tk.Button(self._footer, text=self.T("skip"), font=self.F(11), fg=P["muted"],
-                      bg=P["bg"], relief="flat", bd=0, padx=S(8), pady=S(4),
-                      cursor="hand2",
-                      command=self.skip_step).pack(side="left", padx=(S(12), 0))
+            AppButton(self._footer, self.T("skip"), self.skip_step,
+                      button_type="info", palette=P, font=self.F, scale=S,
+                      size="sm").pack(side="left", padx=(S(12), 0))
 
         label = self.T("finish") if self.flow.is_last else self.T("next")
         command = self.finish_step if self.flow.is_last else self.next_step
-        tk.Button(self._footer, text=label, font=self.F(14, True), fg=P["accent_text"],
-                  bg=P["accent"], relief="flat", bd=0, padx=S(34), pady=S(14),
-                  activebackground=P["soft_text"], cursor="hand2",
-                  command=command).pack(side="right")
+        AppButton(self._footer, label, command, button_type="submit",
+                  palette=P, font=self.F, scale=S, size="lg").pack(side="right")
 
         self._status.configure(text=self._status_text())
 
@@ -689,12 +683,8 @@ class Shell:
 
     def _wizard_button(self, parent, text, command):
         """"初次校准"入口：用强调色、比普通按钮大一号，一眼能看到。"""
-        return tk.Button(parent, text=text, font=self.F(13, True),
-                         fg=self.P["accent_text"], bg=self.P["accent"],
-                         activeforeground=self.P["accent_text"],
-                         activebackground=self.P["soft_text"],
-                         relief="flat", bd=0, padx=self.S(22), pady=self.S(12),
-                         cursor="hand2", command=command)
+        return AppButton(parent, text, command, button_type="submit",
+                         palette=self.P, font=self.F, scale=self.S, size="lg")
 
     def open_calibrate(self) -> None:
         """初次校准向导：新型号的胶纸量一次尺寸。"""

@@ -37,22 +37,19 @@ def _tip(app, body, step_id: str) -> None:
 
 def _button(app, parent, text: str, command: Callable[[], None] = None,
             kind: str = "soft", size: int = 12):
-    """大按钮：soft=浅蓝（次要但醒目）／solid=蓝底白字（主操作）／ghost=白底描边。"""
-    P = app.P
-    if command is None:
-        state, fg, bg = "disabled", P["muted"], P["chip"]
-    elif kind == "solid":
-        state, fg, bg = "normal", P["accent_text"], P["accent"]
-    elif kind == "ghost":
-        state, fg, bg = "normal", P["text"], P["card"]
-    else:
-        state, fg, bg = "normal", P["soft_text"], P["soft"]
-    return tk.Button(parent, text=text, font=app.F(size, True), fg=fg, bg=bg,
-                     activeforeground=fg, activebackground=P["border"],
-                     relief="flat", bd=0, padx=app.S(20), pady=app.S(12),
-                     highlightthickness=1 if kind == "ghost" else 0,
-                     highlightbackground=P["border"],
-                     cursor="hand2" if command else "arrow", state=state, command=command)
+    """大按钮：统一走 AppButton，kind 只影响语义（样式在 buttons.py 内）。
+
+    soft=info／solid=submit／ghost=cancel／warning=warning。
+    """
+    from .buttons import AppButton
+
+    mapping = {"solid": "submit", "ghost": "cancel", "warn": "warning",
+               "soft": "info"}
+    button_size = "lg" if size >= 13 else ("md" if size >= 11 else "sm")
+    return AppButton(parent, text, command, button_type=mapping.get(kind, "info"),
+                     palette=app.P, font=app.F, scale=app.S,
+                     size=button_size,
+                     state="normal" if command is not None else "disabled")
 
 
 def _combo(app, parent, values: List[str], var) -> tk.Widget:

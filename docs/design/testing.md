@@ -55,14 +55,14 @@ UI 用例的约定：
 本机（macOS，Python 3.9，Tk 8.5.9，numpy/OpenCV 已装）：
 
 ```text
-Ran 768 tests in ~53s
-TOTAL  6013 statements  12 missed  99%
+Ran 781 tests in ~53s
+TOTAL  6036 statements  12 missed  99%
 ```
 
 CI（Ubuntu + macOS，Python 3.15）实际报告：
 
 ```text
-TOTAL  6015 statements  8~12 missed  99%（随 Python 版本）
+TOTAL  6038 statements  8~12 missed  99%（随 Python 版本）
 ```
 
 大部分模块 100%，包括：builder / parser / sheets / templates / config / presets /
@@ -74,8 +74,8 @@ CI 上剩余 8~12 行不是“没写用例”，而是三类环境相关分支�
 
 | 位置 | 原因 |
 |---|---|
-| `gui.py:31`、`ui/shell.py:34` | `tkinterdnd2` 可选依赖导入成功分支；CI 没装，装了才有 |
-| `ui/shell.py:102`、`ui/shell.py:424` | `except Exception:` 行在异常跳转时通常不产生 line 事件 |
+| `gui.py:32`、`ui/shell.py:35` | `tkinterdnd2` 可选依赖导入成功分支；CI 没装，装了才有 |
+| `ui/shell.py:103`、`ui/shell.py:425` | `except Exception:` 行在异常跳转时通常不产生 line 事件 |
 | `scan_calib.py` 的部分 `continue`、`scan_dewarp.py:90` | 部分 `continue` 语句在 CPython 里不产生 line 事件（与版本/结构有关） |
 | `scan.py:165`、`scan_photo.py:51` | 防御性分支：输入退化时提前返回/交换点序；正常路径构造不出来 |
 

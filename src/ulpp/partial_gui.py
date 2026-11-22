@@ -27,6 +27,8 @@ from .parser import parse_many
 from .presets import PRESETS
 from .textlabel import parse_text_block
 
+from .ui.buttons import AppButton
+
 
 def _short(text: str, limit: int = 34) -> str:
     text = (text or "").replace("\n", " ").strip()
@@ -100,8 +102,8 @@ class PartialWindow(tk.Toplevel):
         self.sheet_cb = ttk.Combobox(top, textvariable=self.sheet_var, state="readonly", width=46)
         self.sheet_cb.pack(side="left", padx=4)
         self.sheet_cb.bind("<<ComboboxSelected>>", self._on_sheet_changed)
-        ttk.Button(top, text=tr("partial.new_sheet"), command=self._new_sheet).pack(side="left", padx=(8, 2))
-        ttk.Button(top, text=tr("partial.delete_sheet"), command=self._delete_sheet).pack(side="left", padx=2)
+        AppButton(top, tr("partial.new_sheet"), self._new_sheet, button_type="info").pack(side="left", padx=(8, 2))
+        AppButton(top, tr("partial.delete_sheet"), self._delete_sheet, button_type="danger").pack(side="left", padx=2)
         self.count_var = tk.StringVar()
         ttk.Label(top, textvariable=self.count_var, foreground="#555").pack(side="right")
 
@@ -128,13 +130,13 @@ class PartialWindow(tk.Toplevel):
 
         qbtns = ttk.Frame(left)
         qbtns.pack(fill="x", padx=4, pady=(0, 4))
-        ttk.Button(qbtns, text=tr("partial.add_pdf"), command=self._add_pdf).pack(fill="x", pady=2)
-        ttk.Button(qbtns, text=tr("partial.add_text"), command=self._add_text).pack(fill="x", pady=2)
+        AppButton(qbtns, tr("partial.add_pdf"), self._add_pdf, button_type="info").pack(fill="x", pady=2)
+        AppButton(qbtns, tr("partial.add_text"), self._add_text, button_type="info").pack(fill="x", pady=2)
         row = ttk.Frame(qbtns)
         row.pack(fill="x", pady=2)
-        ttk.Button(row, text=tr("partial.remove_item"), command=self._remove_item).pack(side="left", fill="x", expand=True)
-        ttk.Button(row, text=tr("partial.clear_queue"), command=self._clear_queue).pack(side="left", fill="x", expand=True, padx=(4, 0))
-        ttk.Button(qbtns, text=tr("partial.auto_fill"), command=self._auto_fill).pack(fill="x", pady=(4, 2))
+        AppButton(row, tr("partial.remove_item"), self._remove_item, button_type="cancel").pack(side="left", fill="x", expand=True)
+        AppButton(row, tr("partial.clear_queue"), self._clear_queue, button_type="warning").pack(side="left", fill="x", expand=True, padx=(4, 0))
+        AppButton(qbtns, tr("partial.auto_fill"), self._auto_fill, button_type="info").pack(fill="x", pady=(4, 2))
 
         # 中：网格
         center = ttk.LabelFrame(main, text=tr("partial.grid"))
@@ -168,7 +170,7 @@ class PartialWindow(tk.Toplevel):
         self.feed_cb = ttk.Combobox(feed_row, textvariable=self.feed_var, state="readonly", width=26)
         self.feed_cb.pack(side="left", fill="x", expand=True, padx=4)
         # 不知道该怎么放的人走这里；懂的人照旧用上面的下拉框
-        ttk.Button(cal, text=tr("partial.wizard"), command=self._open_wizard).pack(
+        AppButton(cal, tr("partial.wizard"), self._open_wizard, button_type="info").pack(
             fill="x", padx=6, pady=(0, 4))
 
         off_row = ttk.Frame(cal)
@@ -182,9 +184,9 @@ class PartialWindow(tk.Toplevel):
 
         ttk.Label(cal, text=tr("partial.offset_hint"), foreground="#666",
                   wraplength=310, justify="left").pack(anchor="w", padx=6, pady=2)
-        ttk.Button(cal, text=tr("partial.save_printer"), command=self._save_printer).pack(
+        AppButton(cal, tr("partial.save_printer"), self._save_printer, button_type="submit").pack(
             fill="x", padx=6, pady=2)
-        ttk.Button(cal, text=tr("partial.calibration_page"), command=self._calibration_page).pack(
+        AppButton(cal, tr("partial.calibration_page"), self._calibration_page, button_type="info").pack(
             fill="x", padx=6, pady=(2, 2))
         ttk.Label(cal, text=tr("partial.calibration_hint"), foreground="#666",
                   wraplength=310, justify="left").pack(anchor="w", padx=6, pady=(0, 6))
@@ -196,10 +198,10 @@ class PartialWindow(tk.Toplevel):
         out_row.pack(fill="x", padx=6, pady=2)
         self.out_dir_var = tk.StringVar(value=_default_out_dir())
         ttk.Entry(out_row, textvariable=self.out_dir_var).pack(side="left", fill="x", expand=True)
-        ttk.Button(out_row, text=tr("partial.browse"), command=self._choose_out_dir).pack(side="left", padx=(4, 0))
-        ttk.Button(prt, text=tr("partial.generate"), command=self._generate_pdf).pack(fill="x", padx=6, pady=(4, 2))
-        ttk.Button(prt, text=tr("partial.mark_printed"), command=self._mark_printed).pack(fill="x", padx=6, pady=2)
-        ttk.Button(prt, text=tr("partial.undo"), command=self._undo).pack(fill="x", padx=6, pady=(2, 6))
+        AppButton(out_row, tr("partial.browse"), self._choose_out_dir, button_type="info").pack(side="left", padx=(4, 0))
+        AppButton(prt, tr("partial.generate"), self._generate_pdf, button_type="submit").pack(fill="x", padx=6, pady=(4, 2))
+        AppButton(prt, tr("partial.mark_printed"), self._mark_printed, button_type="submit").pack(fill="x", padx=6, pady=2)
+        AppButton(prt, tr("partial.undo"), self._undo, button_type="cancel").pack(fill="x", padx=6, pady=(2, 6))
 
         logf = ttk.LabelFrame(right, text=tr("partial.log"))
         logf.pack(fill="both", expand=True)
@@ -763,8 +765,8 @@ class NewSheetDialog(tk.Toplevel):
 
         btns = ttk.Frame(pad)
         btns.grid(row=7, column=0, columnspan=4, pady=(8, 0), sticky="e")
-        ttk.Button(btns, text=tr("partial.new.cancel"), command=self.destroy).pack(side="right", padx=4)
-        ttk.Button(btns, text=tr("partial.new.create"), command=self._create).pack(side="right")
+        AppButton(btns, tr("partial.new.cancel"), self.destroy, button_type="cancel").pack(side="right", padx=4)
+        AppButton(btns, tr("partial.new.create"), self._create, button_type="submit").pack(side="right")
 
         self.preset_cb.current(0)
         self._on_preset()
@@ -829,8 +831,8 @@ class TextDialog(tk.Toplevel):
         self.text.pack(fill="both", expand=True, pady=6)
         btns = ttk.Frame(pad)
         btns.pack(fill="x")
-        ttk.Button(btns, text=tr("partial.text.cancel"), command=self.destroy).pack(side="right", padx=4)
-        ttk.Button(btns, text=tr("partial.text.ok"), command=self._ok).pack(side="right")
+        AppButton(btns, tr("partial.text.cancel"), self.destroy, button_type="cancel").pack(side="right", padx=4)
+        AppButton(btns, tr("partial.text.ok"), self._ok, button_type="submit").pack(side="right")
 
     def _ok(self) -> None:
         self.result = self.text.get("1.0", "end-1c")

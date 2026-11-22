@@ -10,7 +10,6 @@
 """
 from __future__ import annotations
 
-import math
 import os
 import tkinter as tk
 from pathlib import Path
@@ -18,6 +17,7 @@ from typing import Optional
 
 from ..templates import Template
 from . import screens
+from .buttons import AppButton
 
 WARN_COLOR = "#B45309"
 
@@ -82,94 +82,14 @@ class CalibrateWizard(tk.Toplevel):
             child.destroy()
 
     def _button(self, parent, text, command, kind="soft", size=12):
-        app, P = self.app, self.app.P
-        if kind == "solid":
-            fg, bg = P["accent_text"], P["accent"]
-        elif kind == "warn":
-            fg, bg = "#FFFFFF", WARN_COLOR
-        elif kind == "ghost":
-            fg, bg = P["text"], P["card"]
-        else:
-            fg, bg = P["soft_text"], P["soft"]
-        return tk.Button(parent, text=text, font=app.F(size, True), fg=fg, bg=bg,
-                         activeforeground=fg, activebackground=P["border"],
-                         relief="flat", bd=0, padx=app.S(20), pady=app.S(12),
-                         highlightthickness=1 if kind == "ghost" else 0,
-                         highlightbackground=P["border"], cursor="hand2",
-                         command=command, wraplength=app.S(420), justify="left")
-
-    def _gradient_image(self, width, height, radius, colors, bg):
-        """生成圆角渐变按钮图（运行时画，不增加图片文件）。"""
-        from PIL import Image, ImageDraw
-
-        a, b = colors[0], colors[1]
-        grad = Image.new("RGB", (1, height))
-        px = grad.load()
-        for y in range(height):
-            t = y / max(1, height - 1)
-            px[0, y] = tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
-        grad = grad.resize((width, height))
-        mask = Image.new("L", (width, height), 0)
-        ImageDraw.Draw(mask).rounded_rectangle([0, 0, width - 1, height - 1],
-                                               radius=radius, fill=255)
-        base = Image.new("RGB", (width, height), bg)
-        base.paste(grad, (0, 0), mask)
-        from PIL import ImageTk
-
-        return ImageTk.PhotoImage(base)
-
-    def _hex_rgb(self, value):
-        value = value.lstrip("#")
-        return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
-
-    def _round_button(self, parent, text, command, primary, width, height=None,
-                      radius=None, size=13):
-        """Canvas 画的圆角按钮（Tk 原生按钮没法圆角）。"""
-        app, P = self.app, self.app.P
-        height = height or app.S(56)
-        radius = radius if radius is not None else app.S(12)
-        fill = P["accent"] if primary else P["card"]
-        fg = P["accent_text"] if primary else P["text"]
-        edge = P["accent"] if primary else "#9DB4B8"
-        canvas = tk.Canvas(parent, width=width, height=height, bg=P["bg"],
-                           highlightthickness=0, cursor="hand2")
-        r = min(radius, height / 2 - 1)
-
-        def _round_points():
-            pts = []
-            corners = ((width - r, r, -90, 0), (width - r, height - r, 0, 90),
-                       (r, height - r, 90, 180), (r, r, 180, 270))
-            for cx, cy, a0, a1 in corners:
-                for i in range(9):
-                    ang = math.radians(a0 + (a1 - a0) * i / 8.0)
-                    pts.extend([cx + r * math.cos(ang), cy + r * math.sin(ang)])
-            return pts
-
-        def shape(color):
-            return canvas.create_polygon(_round_points(), fill=color, outline=edge,
-                                         width=1 if primary else 2)
-
-        gradient = os.environ.get("ULPP_GRAD", "off") if primary else ""
-        if gradient in ("", "off", "0", "no"):
-            gradient = ""
-        if gradient:
-            c1 = P["accent"]
-            c2 = P.get("accent2") or P["accent"]
-            photo = self._gradient_image(int(width), int(height), int(r),
-                                         (self._hex_rgb(c1), self._hex_rgb(c2)),
-                                         self._hex_rgb(P["bg"]))
-            canvas.create_image(0, 0, anchor="nw", image=photo)
-            canvas.image = photo
-            body = canvas.create_polygon(_round_points(), fill="", outline=edge, width=1)
-        else:
-            body = shape(fill)
-        label = canvas.create_text(width / 2, height / 2, text=text, fill=fg,
-                                   font=app.F(size, True))
-        for item in (body, label):
-            canvas.tag_bind(item, "<Button-1>", lambda _e: command())
-        canvas.tag_bind(body, "<Enter>", lambda _e: canvas.itemconfigure(body, fill=edge))
-        canvas.tag_bind(body, "<Leave>", lambda _e: canvas.itemconfigure(body, fill=fill))
-        return canvas
+        app = self.app
+        mapping = {"solid": "submit", "warn": "warning", "ghost": "cancel",
+                   "soft": "info"}
+        button_size = "lg" if size >= 13 else ("md" if size >= 11 else "sm")
+        return AppButton(parent, text, command,
+                         button_type=mapping.get(kind, "info"),
+                         palette=app.P, font=app.F, scale=app.S,
+                         size=button_size, wraplength=app.S(420))
 
     def _choice(self, parent, left_text, left_cmd, right_text, right_cmd):
         """左右二选一：直角按钮，两个平分内容宽度。"""
@@ -804,10 +724,9 @@ class CartoonHelp(tk.Toplevel):
 
         foot = tk.Frame(self, bg=P["bg"])
         foot.pack(fill="x", padx=pad, pady=(S(8), S(14)))
-        tk.Button(foot, text=app.T("calib.help_close"), font=app.F(11, True),
-                  relief="flat", bd=0, bg=P["accent"], fg=P["accent_text"],
-                  padx=S(20), pady=S(9), cursor="hand2", command=self.destroy
-                  ).pack(side="right")
+        AppButton(foot, app.T("calib.help_close"), self.destroy,
+                  button_type="cancel", palette=P, font=app.F, scale=S,
+                  size="md").pack(side="right")
 
         self.update_idletasks()
         self._draw_all()

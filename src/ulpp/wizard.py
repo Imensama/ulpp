@@ -19,6 +19,7 @@ from typing import Callable, Dict, Optional
 from .calibration import make_orientation_pdf
 from .i18n import current_language
 from .sheets import PrinterProfile
+from .ui.buttons import AppButton
 
 TOTAL = 9
 BASE_SCALING = 1.3345      # 设计稿按这个 Tk scaling 画的
@@ -302,10 +303,9 @@ class CalibrationWizard(tk.Toplevel):
         tk.Label(head, text=self.T("step_of", title=self.T("title"), n=self.step,
                                    total=TOTAL), font=self.f(10), fg=T["muted"],
                  bg=T["bg"]).pack(side="right")
-        tk.Button(head, text=self.T("theme", name=self.T(T["name"])), font=self.f(9),
-                  fg=T["text"], bg=T["btn2"], relief="flat", bd=0, padx=S(10), pady=S(4),
-                  highlightthickness=1, highlightbackground=T["border"],
-                  command=self.toggle_theme).pack(side="right", padx=(0, S(12)))
+        AppButton(head, self.T("theme", name=self.T(T["name"])), self.toggle_theme,
+                  button_type="info", palette=T, font=self.f, scale=S,
+                  size="sm").pack(side="right", padx=(0, S(12)))
 
         dots = tk.Frame(self, bg=T["bg"])
         dots.pack(fill="x", padx=S(30), pady=(S(8), 0))
@@ -327,22 +327,22 @@ class CalibrationWizard(tk.Toplevel):
 
         foot = tk.Frame(self, bg=T["bg"])
         foot.pack(fill="x", padx=S(30), pady=(S(12), S(16)))
-        tk.Button(foot, text=self.T("cancel"), font=self.f(10), fg=T["muted"], bg=T["bg"],
-                  relief="flat", bd=0, command=self.destroy).pack(side="left")
+        AppButton(foot, self.T("cancel"), self.destroy, button_type="cancel",
+                  palette=T, font=self.f, scale=S, size="md").pack(side="left")
         tk.Label(foot, text=self.T("proto_note"), font=self.f(9), fg=T["muted"],
                  bg=T["bg"]).pack(side="left", padx=S(14))
-        nxt = tk.Button(foot, text=self._next_label(), font=self.f(12, True),
-                        fg=T["accent_text"], bg=T["accent"], relief="flat", bd=0,
-                        padx=S(24), pady=S(10),
-                        command=self.finish if self.step == TOTAL else self.next)
+        nxt = AppButton(foot, self._next_label(),
+                        self.finish if self.step == TOTAL else self.next,
+                        button_type="submit", palette=T, font=self.f,
+                        scale=S, size="lg")
         nxt.pack(side="right")
-        prev = tk.Button(foot, text=self.T("prev"), font=self.f(10), fg=T["text"],
-                         bg=T["card"], relief="flat", bd=0, padx=S(16), pady=S(10),
-                         highlightthickness=1, highlightbackground=T["border"],
-                         command=lambda: self.go(self.step - 1))
+        prev = AppButton(foot, self.T("prev"),
+                         lambda: self.go(self.step - 1),
+                         button_type="cancel", palette=T, font=self.f,
+                         scale=S, size="md")
         prev.pack(side="right", padx=(0, S(10)))
         if self.step == 1:
-            prev.configure(state="disabled", fg=T["muted"])
+            prev.set_state("disabled")
         getattr(self, "step%d" % self.step)()
 
     def toggle_theme(self):
@@ -514,9 +514,9 @@ class CalibrationWizard(tk.Toplevel):
         self.textcol(self.T("s5.title"), self.T("s5.body"), self.T("s5.tip"))
         row = tk.Frame(self.right, bg=T["bg"])
         row.pack(anchor="w", pady=(S(16), 0), fill="x")
-        self.print_btn = tk.Button(row, text=self.T("s5.btn"), font=self.f(11, True),
-                                   fg=T["accent_text"], bg=T["accent"], relief="flat",
-                                   bd=0, padx=S(18), pady=S(9), command=self.make_test_pdf)
+        self.print_btn = AppButton(row, self.T("s5.btn"), self.make_test_pdf,
+                                   button_type="submit", palette=T, font=self.f,
+                                   scale=S, size="md")
         self.print_btn.pack(anchor="w")
         self.print_lbl = tk.Label(row, text="", font=self.f(9), fg=T["muted"], bg=T["bg"],
                                   justify="left", wraplength=S(420))
@@ -617,10 +617,9 @@ class CalibrationWizard(tk.Toplevel):
         note = self.T("s8.note_down" if self.face == "down" else "s8.note_up")
         tk.Label(self.right, text=note, font=self.f(10), fg=T["muted"], bg=T["bg"],
                  wraplength=S(420), justify="left").pack(anchor="w", pady=(S(8), 0))
-        tk.Button(self.right, text=self.T("s8.again"), font=self.f(10), fg=T["text"],
-                  bg=T["card"], relief="flat", bd=0, padx=S(14), pady=S(7),
-                  highlightthickness=1, highlightbackground=T["border"],
-                  command=lambda: self.go(1)).pack(anchor="w", pady=(S(14), 0))
+        AppButton(self.right, self.T("s8.again"), lambda: self.go(1),
+                  button_type="info", palette=T, font=self.f, scale=S,
+                  size="md").pack(anchor="w", pady=(S(14), 0))
 
     # ------------------------------------------------------------ 第 9 步
     def step9(self):
