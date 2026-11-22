@@ -356,7 +356,8 @@ class QueueTests(AppCase):
 class MainTests(UiCase):
     def test_main_builds_app_and_loops(self):
         fake_root = mock.Mock()
-        with mock.patch.object(gui_mod.tk, "Tk", return_value=fake_root), \
+        with mock.patch.object(gui_mod, "_HAS_DND", False), \
+                mock.patch.object(gui_mod.tk, "Tk", return_value=fake_root), \
                 mock.patch.object(gui_mod, "App") as cls:
             gui_mod.main(lang="en_US")
         self.assertEqual(current_language(), "en_US")

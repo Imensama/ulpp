@@ -448,7 +448,8 @@ class InputTests(UiCase):
     def test_bind_drop_noop_without_dnd(self):
         shell = self.make_shell()
         widget = mock.Mock()
-        shell.bind_drop(widget, lambda p: None)
+        with mock.patch.object(ShellMod, "_HAS_DND", False):
+            shell.bind_drop(widget, lambda p: None)
         widget.drop_target_register.assert_not_called()
 
     def test_bind_drop_registers_and_handles_errors(self):
@@ -666,6 +667,7 @@ class MainTests(UiCase):
         fake_root = mock.Mock()
         fake_shell = mock.Mock()
         with mock.patch.object(ShellMod, "enable_dpi_awareness") as aware, \
+                mock.patch.object(ShellMod, "_HAS_DND", False), \
                 mock.patch.object(ShellMod.tk, "Tk", return_value=fake_root), \
                 mock.patch.object(ShellMod, "Shell", return_value=fake_shell) as cls:
             result = ShellMod.main(lang="en_US")
@@ -678,6 +680,7 @@ class MainTests(UiCase):
     def test_main_autoplay_schedules(self):
         fake_root = mock.Mock()
         with mock.patch.object(ShellMod, "enable_dpi_awareness"), \
+                mock.patch.object(ShellMod, "_HAS_DND", False), \
                 mock.patch.object(ShellMod.tk, "Tk", return_value=fake_root), \
                 mock.patch.object(ShellMod, "Shell", return_value=mock.Mock()):
             ShellMod.main(autoplay=True)
