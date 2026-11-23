@@ -193,10 +193,21 @@ class Shell:
         for child in frame.winfo_children():
             child.destroy()
 
+    def _state_label(self) -> str:
+        """界面上只显示相对 home 的短路径，别把 C:\\Users\\<名字> 摆给用户看。"""
+        raw = str(self.state_file)
+        try:
+            rel = os.path.relpath(os.path.abspath(raw), os.path.expanduser("~"))
+        except (ValueError, OSError):
+            return raw
+        if rel.startswith(".."):
+            return raw
+        return "~/" + rel.replace(os.sep, "/")
+
     def _status_text(self) -> str:
         state = self.T("state_saved") if self.flow.last_error is None else self.T("state_unsaved")
         return self.T("status", n=self.flow.number, total=self.flow.total, state=state) \
-            + "   " + str(self.state_file)
+            + "   " + self._state_label()
 
     # ------------------------------------------------------------ 渲染
     def render(self) -> None:

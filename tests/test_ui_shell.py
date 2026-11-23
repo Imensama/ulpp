@@ -76,10 +76,18 @@ class ShellBasics(UiCase):
     def test_status_text_has_state_and_path(self):
         shell = self.make_shell()
         text = shell._status_text()
-        self.assertIn(str(shell.state_file), text)
+        self.assertIn(Path(shell.state_file).name, text)
+        self.assertNotIn(str(Path.home()), text)   # 只显示 ~/ 短路径，不露本机用户名
         self.assertIn(shell.T("state_saved"), text)
         shell.flow.last_error = "OSError: disk full"
         self.assertIn(shell.T("state_unsaved"), shell._status_text())
+
+    def test_status_text_shortens_home_path(self):
+        shell = self.make_shell()
+        shell.state_file = Path.home() / "AppData" / "Roaming" / "ulpp" / "v2_flow.json"
+        text = shell._status_text()
+        self.assertIn("~/AppData/Roaming/ulpp/v2_flow.json", text)
+        self.assertNotIn(str(Path.home()), text)
 
     def test_save_can_be_disabled(self):
         shell = self.make_shell(autosave=False)

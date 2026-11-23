@@ -48,6 +48,9 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s1.printer": "打印机型号",
         "s1.printer_default": "我的打印机",
         "s1.tray": "纸盘",
+        "s1.tray_5": "手送盘（Tray 5）",
+        "s1.tray_bypass": "旁路纸盘（Bypass tray）",
+        "s1.tray_1": "纸盒 1（Tray 1）",
         # 2
         "s2.title": "在普通纸上写一个大大的 A",
         "s2.body": "拿一张普通 A4 纸，用笔在正面写一个大 A。\n\n写好后按“下一步”。",
@@ -122,6 +125,9 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s1.tip": "No need for a real printer; any name that tells them apart works.",
         "s1.printer": "Printer", "s1.tray": "Tray",
         "s1.printer_default": "My printer",
+        "s1.tray_5": "Multi-purpose tray (Tray 5)",
+        "s1.tray_bypass": "Bypass tray",
+        "s1.tray_1": "Tray 1",
         "s2.title": "Write a big A on plain paper",
         "s2.body": "Take a plain A4 sheet and write a big A on the front with a pen.\n\nPress Next when done.",
         "s2.tip": "Plain paper on purpose — no label stock wasted.",
@@ -476,7 +482,8 @@ class CalibrationWizard(tk.Toplevel):
                  bg=T["bg"]).pack(anchor="w")
         self.tray_var = tk.StringVar(value=self.profile.tray or self.T("s1.tray"))
         ttk.Combobox(form, textvariable=self.tray_var, font=self.f(11), width=30,
-                     values=["手送盘（Tray 5）", "Bypass tray", "Tray 1"],
+                     values=[self.T("s1.tray_5"), self.T("s1.tray_bypass"),
+                             self.T("s1.tray_1")],
                      state="readonly").pack(anchor="w", pady=(S(4), 0), ipady=S(3))
 
     # ------------------------------------------------------------ 第 2/3 步
