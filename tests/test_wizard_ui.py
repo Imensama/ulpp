@@ -143,7 +143,7 @@ class BuildStepTests(WizardCase):
 
     def test_step1_defaults_when_profile_empty(self):
         wiz = self._wizard(PrinterProfile(name="", tray=""))
-        self.assertEqual(wiz.printer_var.get(), "Xerox C8055")
+        self.assertEqual(wiz.printer_var.get(), wiz.T("s1.printer_default"))
         self.assertTrue(wiz.tray_var.get())
 
     def test_step4_animation_ticks(self):

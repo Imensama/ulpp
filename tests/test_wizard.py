@@ -21,8 +21,8 @@ class TestFeedInference(unittest.TestCase):
             self.assertEqual(got, want)
             self.assertIn(got, FEED_ORIENTATIONS)
 
-    def test_c8055_case(self):
-        """施乐 C8055 打标签：胶面朝下 + A4 横放 = face_down_short。"""
+    def test_face_down_short_case(self):
+        """胶面朝下 + A4 横放 = face_down_short（最常见的标签机放法）。"""
         self.assertEqual(feed_from_answers("down", "short", DEFAULT_FEED),
                          "face_down_short")
 

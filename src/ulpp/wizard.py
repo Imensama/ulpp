@@ -46,6 +46,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s1.body": "校准结果按“打印机 + 纸盘”存一份。以后选这台机器，放纸方向会自动带出来。",
         "s1.tip": "不用真连打印机；型号随便填，能区分就行。",
         "s1.printer": "打印机型号",
+        "s1.printer_default": "我的打印机",
         "s1.tray": "纸盘",
         # 2
         "s2.title": "在普通纸上写一个大大的 A",
@@ -89,7 +90,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s8.title": "以后这台机器就这样放",
         "s8.tip": "换胶纸品牌、换纸盘，都要重新对一次；同一台机器不用再对。",
         "s8.again": "重新校准",
-        "s8.note_down": "胶面朝下的机器（比如施乐 C8055 打标签），按上面这句话放就对了。",
+        "s8.note_down": "胶面朝下的机器（很多激光标签机都是），按上面这句话放就对了。",
         "s8.note_up": "胶面朝上的机器，按上面这句话放就对了。",
         # 9
         "s9.title": "最后：左右 / 上下微调",
@@ -120,6 +121,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s1.body": "The result is saved per printer + tray. Next time you pick this printer, the feed direction comes back automatically.",
         "s1.tip": "No need for a real printer; any name that tells them apart works.",
         "s1.printer": "Printer", "s1.tray": "Tray",
+        "s1.printer_default": "My printer",
         "s2.title": "Write a big A on plain paper",
         "s2.body": "Take a plain A4 sheet and write a big A on the front with a pen.\n\nPress Next when done.",
         "s2.tip": "Plain paper on purpose — no label stock wasted.",
@@ -155,7 +157,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s8.title": "Load it this way from now on",
         "s8.tip": "New label brand or new tray needs a new calibration; the same printer does not.",
         "s8.again": "Calibrate again",
-        "s8.note_down": "For face-down printers (Xerox C8055 with labels), this is the way.",
+        "s8.note_down": "For face-down printers (common on laser label printers), this is the way.",
         "s8.note_up": "For face-up printers, this is the way.",
         "s9.title": "Last step: left/right, up/down",
         "s9.body": "If the print sits a bit off, nudge it here instead of changing the sheet.",
@@ -465,7 +467,7 @@ class CalibrationWizard(tk.Toplevel):
         form.pack(fill="x", pady=(S(16), 0), anchor="w")
         tk.Label(form, text=self.T("s1.printer"), font=self.f(10), fg=T["muted"],
                  bg=T["bg"]).pack(anchor="w")
-        self.printer_var = tk.StringVar(value=self.profile.name or "Xerox C8055")
+        self.printer_var = tk.StringVar(value=self.profile.name or self.T("s1.printer_default"))
         tk.Entry(form, textvariable=self.printer_var, font=self.f(12), width=32,
                  relief="flat", highlightthickness=1,
                  highlightbackground=T["border"]).pack(anchor="w", pady=(S(4), S(12)),

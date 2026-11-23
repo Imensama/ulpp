@@ -69,7 +69,7 @@ class PrinterProfile:
     """一台打印机的位置校准配置；offset 是“补偿量”，正数表示把内容往右/往下移。"""
 
     id: str = "default"
-    name: str = "default"
+    name: str = ""
     offset_x_mm: float = 0.0
     offset_y_mm: float = 0.0
     feed: str = DEFAULT_FEED
@@ -94,7 +94,7 @@ class PrinterProfile:
             feed = DEFAULT_FEED
         return cls(
             id=str(data.get("id") or _new_id()),
-            name=str(data.get("name") or "default"),
+            name=str(data.get("name") or ""),
             offset_x_mm=float(data.get("offset_x_mm") or 0.0),
             offset_y_mm=float(data.get("offset_y_mm") or 0.0),
             feed=feed,
