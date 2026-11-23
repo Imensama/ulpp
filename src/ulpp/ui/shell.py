@@ -238,8 +238,11 @@ class Shell:
 
         label = self.T("finish") if self.flow.is_last else self.T("next")
         command = self.finish_step if self.flow.is_last else self.next_step
+        # 定宽：最后一步的「完成」比「下一步 →」短，不定宽的话按钮会缩成方块。
+        # 9 个字宽是按最长的「下一步 →」量的，两种文案下按钮同样大小、都不会被裁。
         AppButton(self._footer, label, command, button_type="submit",
-                  palette=P, font=self.F, scale=S, size="lg").pack(side="right")
+                  palette=P, font=self.F, scale=S, size="lg",
+                  width=9).pack(side="right")
 
         self._status.configure(text=self._status_text())
 
