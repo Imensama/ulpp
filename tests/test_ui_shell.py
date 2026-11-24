@@ -674,6 +674,7 @@ class MainTests(UiCase):
     def test_main_builds_shell_and_enters_mainloop(self):
         fake_root = mock.Mock()
         fake_shell = mock.Mock()
+        fake_shell.needs_first_run_guide.return_value = False
         with mock.patch.object(ShellMod, "enable_dpi_awareness") as aware, \
                 mock.patch.object(ShellMod, "_HAS_DND", False), \
                 mock.patch.object(ShellMod.tk, "Tk", return_value=fake_root), \
@@ -687,11 +688,26 @@ class MainTests(UiCase):
 
     def test_main_autoplay_schedules(self):
         fake_root = mock.Mock()
+        fake_shell = mock.Mock()
+        fake_shell.needs_first_run_guide.return_value = False
         with mock.patch.object(ShellMod, "enable_dpi_awareness"), \
                 mock.patch.object(ShellMod, "_HAS_DND", False), \
                 mock.patch.object(ShellMod.tk, "Tk", return_value=fake_root), \
-                mock.patch.object(ShellMod, "Shell", return_value=mock.Mock()):
+                mock.patch.object(ShellMod, "Shell", return_value=fake_shell):
             ShellMod.main(autoplay=True)
         fake_root.after.assert_called_once()
         args = fake_root.after.call_args.args
         self.assertEqual(args[0], 600)
+
+    def test_main_first_run_opens_calibrate(self):
+        fake_root = mock.Mock()
+        fake_shell = mock.Mock()
+        fake_shell.needs_first_run_guide.return_value = True
+        with mock.patch.object(ShellMod, "enable_dpi_awareness"), \
+                mock.patch.object(ShellMod, "_HAS_DND", False), \
+                mock.patch.object(ShellMod.tk, "Tk", return_value=fake_root), \
+                mock.patch.object(ShellMod, "Shell", return_value=fake_shell):
+            ShellMod.main()
+        fake_shell.mark_first_run_done.assert_called_once()
+        delays = [c.args[0] for c in fake_root.after.call_args_list]
+        self.assertIn(300, delays)

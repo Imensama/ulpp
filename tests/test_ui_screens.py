@@ -171,14 +171,30 @@ class OutputScreenTests(UiCase):
         shell.images = ["/tmp/x.png"]
         shell.clear_files = mock.Mock()
         shell.render()
+        boxes = _all(shell.root, "Listbox")
+        self.assertTrue(boxes, "内容页应该有一个列出输入的列表框")
+        listed = [boxes[0].get(i) for i in range(boxes[0].size())]
+        self.assertIn("a.pdf", listed)
+        self.assertIn("d.pdf", listed)
+        self.assertIn("x.png", listed)
         labels = [w.cget("text") for w in _all(shell.root, "Label")]
         joined = "\n".join(labels)
-        self.assertIn("a.pdf", joined)
-        self.assertIn("…", joined)
+        self.assertIn(shell.T("output.count", n=5), joined)
         self.assertIn(shell.T("output.images", n=1), joined)
         buttons = {w.cget("text"): w for w in _all(shell.root, "Button")}
+        self.assertIn(shell.T("output.remove"), buttons)
         buttons[shell.T("output.clear")].invoke()
         shell.clear_files.assert_called_once()
+
+    def test_remove_selected_drops_only_selected(self):
+        shell = self._at_output()
+        shell.files = ["/tmp/a.pdf", "/tmp/b.pdf"]
+        shell.images = []
+        shell.render()
+        boxes = _all(shell.root, "Listbox")
+        boxes[0].selection_set(1)          # 选中第二条（b.pdf）
+        shell.remove_selected_inputs()
+        self.assertEqual(["/tmp/a.pdf"], shell.files)
 
     def test_output_done_and_error(self):
         shell = self._at_output()

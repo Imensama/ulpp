@@ -204,24 +204,46 @@ class TestEntryMain(unittest.TestCase):
         shell.assert_called_once_with("en")
         set_language.assert_called_with("en")
 
-    def test_no_args_opens_gui(self):
-        with patch("ulpp.gui.main") as gui:
+    def test_no_args_opens_shell(self):
+        # 2.0 起默认进新外壳
+        with patch("ulpp.ui.shell.main", return_value=0) as shell:
             rc, set_language = self.run_entry([])
         self.assertEqual(rc, 0)
-        gui.assert_called_once_with()
+        shell.assert_called_once_with(None)
         set_language.assert_called_with(None)
 
-    def test_language_only_opens_gui(self):
-        with patch("ulpp.gui.main") as gui:
+    def test_language_only_opens_shell(self):
+        with patch("ulpp.ui.shell.main", return_value=0) as shell:
             rc, set_language = self.run_entry(["--lang=zh"])
         self.assertEqual(rc, 0)
-        gui.assert_called_once_with()
+        shell.assert_called_once_with("zh")
         set_language.assert_called_with("zh")
+
+    def test_v1_flag_opens_old_gui(self):
+        for flag in ("--v1", "--classic"):
+            with patch("ulpp.gui.main") as gui:
+                rc, set_language = self.run_entry([flag])
+            self.assertEqual(rc, 0)
+            gui.assert_called_once_with()
+            set_language.assert_called_with(None)
+
+    def test_v1_flag_keeps_language(self):
+        with patch("ulpp.gui.main") as gui:
+            rc, set_language = self.run_entry(["--v1", "--lang", "en"])
+        self.assertEqual(rc, 0)
+        gui.assert_called_once_with()
+        set_language.assert_called_with("en")
 
     def test_other_args_go_to_cli(self):
         with patch("ulpp.cli.main", return_value=3) as cli_main:
             rc, _ = self.run_entry(["file.pdf"])
         self.assertEqual(rc, 3)
+        cli_main.assert_called_once_with(["file.pdf"])
+
+    def test_ui_flag_with_input_goes_to_cli(self):
+        with patch("ulpp.cli.main", return_value=5) as cli_main:
+            rc, _ = self.run_entry(["--v2", "file.pdf"])
+        self.assertEqual(rc, 5)
         cli_main.assert_called_once_with(["file.pdf"])
 
 

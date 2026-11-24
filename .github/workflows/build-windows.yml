@@ -73,8 +73,8 @@ jobs:
         shell: pwsh
         run: |
           $d = "dist/ulpp2"
-          Set-Content -Path "$d/start-v2.bat" -Value "@echo off`r`nstart `"`" `"%~dp0ulpp2.exe`" --v2" -Encoding ascii
-          Set-Content -Path "$d/start-classic.bat" -Value "@echo off`r`nstart `"`" `"%~dp0ulpp2.exe`"" -Encoding ascii
+          Set-Content -Path "$d/start.bat" -Value "@echo off`r`nstart `"`" `"%~dp0ulpp2.exe`"" -Encoding ascii
+          Set-Content -Path "$d/start-classic.bat" -Value "@echo off`r`nstart `"`" `"%~dp0ulpp2.exe`" --v1" -Encoding ascii
       - name: 压缩
         shell: pwsh
         run: |
@@ -99,8 +99,8 @@ jobs:
 
             | 文件 / File | 说明 / Notes |
             |---|---|
-            | `ulpp-${{ env.SLUG }}-full-windows-x64.zip` | **推荐 / Recommended** · 全功能，含拍照量纸（解压后双击 `启动 v2.bat`）<br>Full build with photo measurement — unzip and run `启动 v2.bat` |
-            | `ulpp.exe` | 轻量单文件（约 36 MB），**不含 OpenCV**，拍照量纸不可用<br>Lightweight single exe (~36 MB), **no OpenCV**, photo measurement unavailable |
+            | `ulpp-${{ env.SLUG }}-full-windows-x64.zip` | **推荐 / Recommended** · 全功能，含拍照量纸（解压后双击 `start.bat`，旧界面用 `start-classic.bat`）<br>Full build with photo measurement — unzip and run `start.bat` (`start-classic.bat` for the old UI) |
+            | `ulpp.exe` | 轻量单文件（约 39 MB），**不含 OpenCV**，拍照量纸不可用<br>Lightweight single exe (~39 MB), **no OpenCV**, photo measurement unavailable |
 
             > 两者都能跑扫描量纸、预设、出图、接着打；区别只在拍照量纸。
             > Both support scan-based measuring, presets, output and resuming a half-used sheet; only photo measurement differs.

@@ -53,7 +53,7 @@ pip install -r requirements.txt
 pip install -e .
 python -m ulpp            # GUI
 python -m ulpp -h         # full CLI help
-python -m ulpp --v2       # new shell (preview)
+python -m ulpp --v1       # classic UI (compat mode)
 python -m ulpp --lang en  # force English UI
 ```
 
@@ -160,13 +160,14 @@ Always print the test page at **100% / actual size**.
 
 ---
 
-## v2 preview
+## New shell (default since 2.0)
 
 ```powershell
-python -m ulpp --v2
+python -m ulpp        # new shell
+python -m ulpp --v1   # classic UI (kept for compatibility)
 ```
 
-The classic UI is untouched (`python -m ulpp`). What's new:
+What's new:
 
 - **First-time calibration**: two binary questions (scanner? / A4 to print on?), one next-step at a time
 - **Measuring from photos**: print a calibration board, take one photo — or tap the four corners

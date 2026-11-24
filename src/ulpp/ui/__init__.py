@@ -8,5 +8,6 @@
 - ``screens`` 六屏内容与文案（中英）
 - ``shell``   窗口骨架与页脚导航，入口 ``ulpp.ui.shell.main``
 
-老界面 ``ulpp.gui`` / ``ulpp.partial_gui`` 保持不变；``python -m ulpp --v2`` 进这里。
+老界面 ``ulpp.gui`` / ``ulpp.partial_gui`` 保持不变；2.0 起 ``python -m ulpp`` 默认进这里，
+老界面用 ``--v1``。
 """

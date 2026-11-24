@@ -10,9 +10,9 @@ cd ulpp
 python -m pip install -r requirements.txt
 python -m pip install -e .
 $env:PYTHONPATH = "$PWD\src"
-python -m ulpp            # 老界面（v1）
-python -m ulpp --v2       # 新外壳（预览）
-python -m unittest discover -s tests -t .    # 153 个用例
+python -m ulpp            # 新外壳（2.0 起默认）
+python -m ulpp --v1       # 老界面（兼容模式）
+python -m unittest discover -s tests -t .    # 782 个用例
 ```
 
 > 拍照量纸需要可选依赖：`pip install -e ".[photo]"`（会装 OpenCV）。

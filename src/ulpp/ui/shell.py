@@ -2,7 +2,7 @@
 """v2 外壳：页眉 + 进度点 + 内容区 + 页脚（上一步/跳过/下一步）+ 状态条。
 
 M0 只做骨架，规矩三条：
-1. 老界面（``gui.py`` / ``partial_gui.py``）一行不动，入口用 ``python -m ulpp --v2``；
+1. 老界面（``gui.py`` / ``partial_gui.py``）一行不动，2.0 起退到 ``python -m ulpp --v1``；
 2. 每一步的状态都落盘（``%APPDATA%\\ulpp\\v2_flow.json``），关掉重开能接着上次；
 3. 布局从一开始就按 ``Metrics.z`` 缩放，不再写死像素。
 """
@@ -12,6 +12,7 @@ import os
 import queue
 import threading
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 from tkinter import font as tkfont
 from typing import Optional
@@ -29,6 +30,8 @@ from .buttons import AppButton
 from .texts import TEXTS as _TEXTS, texts as _texts
 from .flow import Flow, state_path
 from .scale import Metrics, enable_dpi_awareness
+
+FIRST_RUN_MARK = "first_run_done"     # 首次启动引导做过没有（与 v2_flow.json 同目录）
 
 try:                              # 可选：装了 tkinterdnd2 才能拖文件进来
     from tkinterdnd2 import DND_FILES, TkinterDnD  # type: ignore
@@ -577,6 +580,43 @@ class Shell:
         self.output_path = None
         self.render()
 
+    def remove_selected_inputs(self) -> None:
+        """内容页的「移除选中」：只删列表里勾中的那几条。"""
+        box = getattr(self, "_input_list", None)
+        items = getattr(self, "_input_items", None) or []
+        if box is None or not items:
+            return
+        drop = {items[i] for i in box.curselection() if 0 <= i < len(items)}
+        if not drop:
+            return
+        self.files = [p for p in self.files if p not in drop]
+        self.images = [p for p in self.images if p not in drop]
+        self.output_path = None
+        self.output_error = None
+        self.save()
+        self.render()
+
+    # ------------------------------------------------------------ 首次启动
+    def needs_first_run_guide(self) -> bool:
+        """第一次用这个程序吗：没存过胶纸、没有自定义模板、也没写过引导标记。"""
+        try:
+            if (Path(self.state_file).parent / FIRST_RUN_MARK).exists():
+                return False
+        except OSError:
+            return False
+        has_sheet = bool(getattr(self.store, "sheets", None))
+        has_tpl = bool(getattr(self.templates, "items", None))
+        return not has_sheet and not has_tpl
+
+    def mark_first_run_done(self) -> None:
+        """写一个标记文件：跳过一次之后别再每次启动都弹校准。"""
+        try:
+            folder = Path(self.state_file).parent
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / FIRST_RUN_MARK).write_text("1", encoding="utf-8")
+        except OSError:
+            pass
+
     def on_options(self) -> None:
         """勾选项存进进度存档，下次打开还是这套。"""
         self.flow.answers.update({
@@ -753,11 +793,14 @@ class Shell:
 
 def main(lang: Optional[str] = None, flow_path: Optional[str] = None,
          autoplay: bool = False) -> int:
-    """``python -m ulpp --v2`` 的入口。"""
+    """``python -m ulpp`` 的入口（2.0 起默认就是这里）。"""
     enable_dpi_awareness()
     root = TkinterDnD.Tk() if _HAS_DND else tk.Tk()   # type: ignore[misc]
     flow = Flow.load(flow_path) if flow_path else Flow.load()
     shell = Shell(root, flow=flow, lang=lang)
+    if shell.needs_first_run_guide():   # 第一次用：直接把初次校准摆到脸上
+        shell.mark_first_run_done()
+        root.after(300, shell.open_calibrate)
     if autoplay:  # 只给截图/冒烟脚本用：自动一屏屏走到头
         root.after(600, lambda: _autoplay(shell))
     root.mainloop()

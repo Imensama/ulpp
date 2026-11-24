@@ -99,6 +99,14 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s9.title": "最后：左右 / 上下微调",
         "s9.body": "打出来的标签如果整体偏了一点，在这里挪；不用再去改纸。",
         "s9.tip": "先打一张试，偏多少就填多少。负数往左/往上。",
+        "s9.page_btn": "打一张校准页",
+        "s9.scan_btn": "扫校准页，自动填",
+        "s9.page_name": "ulpp校准页.pdf",
+        "s9.page_save": "把校准页存到…",
+        "s9.page_done": "已存到 {path}。\n\n用 100% 实际大小打印这一页，扫描或拍照后再点「扫校准页，自动填」。",
+        "s9.scan_title": "选一张校准页的扫描件或照片",
+        "s9.scan_ok": "自动纠偏完成：左右 {dx} mm，上下 {dy} mm（置信度 {conf}%）。\n\n没问题就点「保存」。",
+        "s9.scan_bad": "没量准：{detail}\n\n重扫一次，或者按上面的说明手动填。",
         "s9.x": "左右 (mm)",
         "s9.y": "上下 (mm)",
         "s9.now": "当前：左右 {x:+.1f} mm，上下 {y:+.1f} mm",
@@ -168,6 +176,14 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "s9.title": "Last step: left/right, up/down",
         "s9.body": "If the print sits a bit off, nudge it here instead of changing the sheet.",
         "s9.tip": "Print one, measure the offset, type it in. Negative moves left/up.",
+        "s9.page_btn": "Make a test page",
+        "s9.scan_btn": "Scan it, fill in",
+        "s9.page_name": "ulpp-test-page.pdf",
+        "s9.page_save": "Save the test page to…",
+        "s9.page_done": "Saved to {path}.\n\nPrint this page at 100% actual size, then scan or photograph it and press “Scan it, fill in”.",
+        "s9.scan_title": "Pick a scan or photo of the test page",
+        "s9.scan_ok": "Offset found: left/right {dx} mm, up/down {dy} mm (confidence {conf}%).\n\nHappy with it? Press Save.",
+        "s9.scan_bad": "Couldn't measure it: {detail}\n\nScan again, or type the numbers in by hand.",
         "s9.x": "Left/right (mm)", "s9.y": "Up/down (mm)",
         "s9.now": "Now: left/right {x:+.1f} mm, up/down {y:+.1f} mm",
         "feed.up": "front side up", "feed.down": "front side down",
@@ -649,6 +665,78 @@ class CalibrationWizard(tk.Toplevel):
                                                              pady=S(5), ipady=S(3))
         tk.Label(self.right, text=self.T("s9.now", x=self.off_x, y=self.off_y),
                  font=self.f(10), fg=T["muted"], bg=T["bg"]).pack(anchor="w", pady=(S(10), 0))
+
+        auto = tk.Frame(self.right, bg=T["bg"])
+        auto.pack(anchor="w", pady=(S(16), 0))
+        AppButton(auto, self.T("s9.page_btn"), self.save_offset_page,
+                  button_type="info", palette=T, font=self.f, scale=S,
+                  size="md").pack(side="left")
+        AppButton(auto, self.T("s9.scan_btn"), self.scan_offset_page,
+                  button_type="submit", palette=T, font=self.f, scale=S,
+                  size="md").pack(side="left", padx=(S(10), 0))
+
+    # ------------------------------------------------------------ 第 9 步：自动纠偏
+    def offset_page_grid(self):
+        """校准页用最常见的 45 格（5×9）当底图；纠偏量的是平移，跟格子多少无关。"""
+        from .presets import PRESETS
+
+        return PRESETS[0].to_grid()
+
+    def save_offset_page(self) -> None:
+        """存一张校准页：用 100% 实际大小打在普通纸上。"""
+        import os
+        from tkinter import filedialog, messagebox
+
+        from ..offset_calib import make_page_pdf
+
+        path = filedialog.asksaveasfilename(
+            title=self.T("s9.page_save"),
+            initialdir=self.output_dir,
+            initialfile=self.T("s9.page_name"),
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+        )
+        if not path:
+            return
+        try:
+            make_page_pdf(self.offset_page_grid(), path)
+        except Exception as exc:                      # 存不下来就直说，别静默
+            messagebox.showerror(self.T("app"), str(exc))
+            return
+        messagebox.showinfo(
+            self.T("app"),
+            self.T("s9.page_done", path=os.path.basename(str(path))),
+        )
+
+    def scan_offset_page(self) -> None:
+        """扫一张校准页，把左右/上下微调自动填好（正数往右/往下）。"""
+        from tkinter import filedialog, messagebox
+
+        from ..offset_calib import measure_offset
+
+        path = filedialog.askopenfilename(
+            title=self.T("s9.scan_title"),
+            filetypes=[("图片 / Image", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff")],
+        )
+        if not path:
+            return
+        try:
+            result = measure_offset(path, self.offset_page_grid())
+        except Exception as exc:                      # 量崩了也不能让窗口闪退
+            messagebox.showerror(self.T("app"), str(exc))
+            return
+        if result.confidence < 0.5:
+            detail = "；".join(result.warnings) or "-"
+            messagebox.showwarning(self.T("app"), self.T("s9.scan_bad", detail=detail))
+            return
+        dx = round(-result.dx_mm, 1)                  # PrinterProfile 语义：正数往右/往下挪
+        dy = round(-result.dy_mm, 1)
+        self.off_x_var.set(dx)
+        self.off_y_var.set(dy)
+        messagebox.showinfo(
+            self.T("app"),
+            self.T("s9.scan_ok", dx=dx, dy=dy, conf=int(round(result.confidence * 100))),
+        )
 
     def finish(self):
         feed = self.feed_key()

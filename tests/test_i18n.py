@@ -154,7 +154,24 @@ class TestLanguagePacks(unittest.TestCase):
         self.assertIn("Output folder", out)
         self.assertIsNone(CJK_RE.search(out), "英文 --help 不应出现中文")
 
-    def test_lang_only_opens_gui(self):
+    def test_lang_only_opens_shell(self):
+        """2.0 起只带 --lang 进的是新外壳（以前是老界面）。"""
+        import ulpp.__main__ as app_main
+        import ulpp.ui.shell as shell
+
+        calls = []
+        original = shell.main
+        shell.main = lambda lang=None, **kw: (calls.append(current_language()), 0)[1]
+        original_argv = sys.argv
+        try:
+            sys.argv = ["ulpp", "--lang", "en"]
+            app_main.main()
+        finally:
+            shell.main = original
+            sys.argv = original_argv
+        self.assertEqual(["en_US"], calls)
+
+    def test_v1_flag_opens_old_gui(self):
         import ulpp.__main__ as app_main
         import ulpp.gui as gui
 
@@ -163,7 +180,7 @@ class TestLanguagePacks(unittest.TestCase):
         gui.main = lambda: calls.append(current_language())
         original_argv = sys.argv
         try:
-            sys.argv = ["ulpp", "--lang", "en"]
+            sys.argv = ["ulpp", "--v1", "--lang", "en"]
             app_main.main()
         finally:
             gui.main = original

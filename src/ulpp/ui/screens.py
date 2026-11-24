@@ -258,22 +258,37 @@ def build_output(app, body) -> None:
             size=10).pack(side="left", padx=(app.S(8), 0))
     _button(app, top, app.T("output.add_zip"), app.pick_zip, kind="ghost",
             size=10).pack(side="left", padx=(app.S(8), 0))
-    if app.files:
+    if app.files or app.images:
         _button(app, top, app.T("output.clear"), app.clear_files, kind="ghost",
                 size=10).pack(side="right")
+        _button(app, top, app.T("output.remove"), app.remove_selected_inputs,
+                kind="cancel", size=10).pack(side="right", padx=(0, app.S(6)))
 
     total_in = len(app.files) + len(app.images)
+    items = list(app.files) + list(app.images)
     if total_in:
-        names = "、".join(Path(f).name for f in (app.files + app.images)[:3])
-        extra = "…" if total_in > 3 else ""
-        tk.Label(li, text=app.T("output.files", n=total_in, names=names + extra),
+        tk.Label(li, text=app.T("output.count", n=total_in),
                  font=app.F(11), fg=app.P["text"], bg=app.P["card"], anchor="w").pack(
             fill="x", pady=(app.S(10), 0))
+        holder = tk.Frame(li, bg=app.P["card"], highlightthickness=1,
+                          highlightbackground=app.P["border"])
+        holder.pack(fill="x", pady=(app.S(6), 0))
+        box = tk.Listbox(holder, height=min(4, total_in), selectmode="extended",
+                         relief="flat", bd=0, highlightthickness=0,
+                         activestyle="none", font=app.F(10),
+                         bg="#FFFFFF", fg=app.P["text"], yscrollcommand=None)
+        box.pack(fill="x", padx=app.S(2), pady=app.S(2))
+        for path in items:
+            box.insert("end", Path(path).name)
+        app._input_list = box
+        app._input_items = items
         if app.images:
             tk.Label(li, text=app.T("output.images", n=len(app.images)),
                      font=app.F(10), fg=app.P["muted"], bg=app.P["card"],
                      anchor="w").pack(fill="x", pady=(app.S(2), 0))
     else:
+        app._input_list = None
+        app._input_items = []
         tk.Label(li, text=app.T("output.empty"), font=app.F(11), fg=app.P["muted"],
                  bg=app.P["card"], anchor="w").pack(fill="x", pady=(app.S(10), 0))
 

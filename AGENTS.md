@@ -34,8 +34,8 @@ packaging/           PyInstaller 配置（ulpp.spec 单文件 / ulpp_onedir.spec
 ```powershell
 cd <repo>
 $env:PYTHONPATH = "$PWD\src"
-python -m ulpp            # 老界面（v1）
-python -m ulpp --v2       # 新外壳（向导）
+python -m ulpp            # 新外壳（2.0 起默认）
+python -m ulpp --v1       # 老界面（兼容模式）
 python -m ulpp --help     # 命令行
 python -m unittest discover -s tests -t .    # 全部测试
 ```
