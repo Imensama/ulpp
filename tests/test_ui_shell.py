@@ -658,6 +658,51 @@ class DialogsAndEntryTests(UiCase):
         self.assertEqual((grid.cols, grid.rows), (5, 9))
 
 
+class LogTests(UiCase):
+    """运行日志：写文件（B）、状态栏实时一行（C）、出错时给「看看日志」。"""
+
+    def test_log_written_next_to_state_file(self):
+        shell = self.make_shell()
+        shell._append_log("读入 a.pdf：12 条记录")
+        self.assertTrue(shell.log_path.exists())
+        text = shell.log_path.read_text(encoding="utf-8")
+        self.assertIn("读入 a.pdf：12 条记录", text)
+        self.assertEqual(shell.log_path.parent, Path(shell.state_file).parent)
+
+    def test_log_line_shows_in_status_bar(self):
+        shell = self.make_shell()
+        shell._queue = queue.Queue()
+        shell._queue.put(("log", "排版：用到 37 格"))
+        shell._poll_generate()
+        self.assertIn("37 格", str(shell._status.cget("text")))
+        self.assertIn("37 格", shell.log_path.read_text(encoding="utf-8"))
+
+    def test_error_is_logged_and_offers_open(self):
+        shell = self.make_shell(flow=self.make_flow(index=2))
+        shell._queue = queue.Queue()
+        shell._queue.put(("error", "解析失败：坏 PDF"))
+        shell._poll_generate()
+        self.assertIn("坏 PDF", shell.log_path.read_text(encoding="utf-8"))
+        buttons = [w.cget("text") for w in _all_buttons(shell.root)]
+        self.assertIn(shell.T("output.log_check"), buttons)
+
+    def test_open_log_uses_open_path(self):
+        shell = self.make_shell()
+        shell._open_path = mock.Mock()
+        shell.open_log()
+        shell._open_path.assert_called_once()
+        self.assertTrue(shell.log_path.exists())
+
+
+def _all_buttons(widget):
+    found = []
+    for child in widget.winfo_children():
+        if isinstance(child, tk.Button):
+            found.append(child)
+        found.extend(_all_buttons(child))
+    return found
+
+
 class MainTests(UiCase):
     def test_autoplay_walks_to_last_step(self):
         shell = mock.Mock()

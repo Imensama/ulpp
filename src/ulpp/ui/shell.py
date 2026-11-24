@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import queue
 import threading
+import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
@@ -236,6 +237,9 @@ class Shell:
             tk.Label(parent, text=self.T("output.fail", err=self.output_error),
                      font=self.F(10), fg="#B45309", bg=P["bg"], anchor="w",
                      justify="left", wraplength=S(420)).pack(side="left", padx=(S(12), 0))
+            AppButton(parent, self.T("output.log_check"), self.open_log,
+                      button_type="cancel", palette=P, font=self.F, scale=S,
+                      size="sm").pack(side="right", padx=(0, S(10)))
 
     def _state_label(self) -> str:
         """界面上只显示相对 home 的短路径，别把 C:\\Users\\<名字> 摆给用户看。"""
@@ -252,6 +256,28 @@ class Shell:
         state = self.T("state_saved") if self.flow.last_error is None else self.T("state_unsaved")
         return self.T("status", n=self.flow.number, total=self.flow.total, state=state) \
             + "   " + self._state_label()
+
+    # ------------------------------------------------------------ 运行日志
+    @property
+    def log_path(self) -> Path:
+        """日志跟状态文件放一起（``%APPDATA%\\ulpp\\ulpp.log``），不往工作目录写。"""
+        return Path(self.state_file).parent / "ulpp.log"
+
+    def _append_log(self, text: str) -> None:
+        """写一行带时间戳的日志；写不进去也不该影响出图。"""
+        line = "%s  %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), text)
+        try:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.log_path, "a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except OSError:
+            pass
+
+    def open_log(self) -> None:
+        """出错时给用户一个「看看日志」的入口。"""
+        if not self.log_path.exists():
+            self._append_log("(no log yet / 还没有日志)")
+        self._open_path(str(self.log_path))
 
     # ------------------------------------------------------------ 渲染
     def render(self) -> None:
@@ -689,6 +715,8 @@ class Shell:
             return
         self.output_error = None
         self.output_path = None
+        self._append_log("开始生成：%d 个 PDF / %d 张图 / 文字 %d 条，目标目录 %s"
+                         % (len(self.files), len(self.images), len(items), self._out_dir()))
         grid = screens._selected(self).to_grid()
         job = dict(
             files=list(self.files), images=list(self.images), items=items,
@@ -739,12 +767,20 @@ class Shell:
                     self._progress.configure(mode="determinate", maximum=total, value=done)
                     self._progress.pack(side="left", padx=(self.S(12), 0))
                     self._status.configure(text=self.T("output.busy") + " %d/%d" % (done, total))
+                elif kind == "log":
+                    # C 方案：出图过程中的每一行都写进日志文件，同时把状态栏临时当"实时一行"用
+                    msg = str(payload[0]) if payload else ""
+                    self._append_log(msg)
+                    self._status.configure(text=msg if len(msg) <= 70 else msg[:69] + "…")
                 elif kind == "done":
                     outs = payload[0] if payload else {}
                     self.output_path = next(iter(outs.values())) if outs else None
+                    self._append_log("完成：%s" % Path(self.output_path).name
+                                     if self.output_path else "完成（没有输出）")
                     finished = True
                 elif kind == "error":
                     self.output_error = payload[0] if payload else "?"
+                    self._append_log("出错：%s" % self.output_error)
                     finished = True
         except queue.Empty:
             pass
