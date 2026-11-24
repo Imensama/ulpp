@@ -15,8 +15,11 @@ import uuid
 
 from PIL import Image, ImageFilter
 
+from ulpp import offset_calib
 from ulpp.offset_calib import OffsetResult, make_page_pdf, measure_offset, render_page
 from ulpp.templates import GridSpec
+
+needs_numpy = unittest.skipUnless(offset_calib._HAS_NUMPY, "需要 numpy（量偏移用）")
 
 DPI = 300
 TOL_MM = 0.2          # 要求：已知平移量回来的误差 ≤ 0.2 mm
@@ -59,6 +62,7 @@ class OffsetCalibTests(unittest.TestCase):
         return self._save(Image.new("L", self.page.size, gray), "flat_%d.png" % gray)
 
     # ------------------------------------------------------------ 正常路径
+    @needs_numpy
     def test_known_shift_is_recovered(self):
         """整体偏 +1.2 / −0.8 mm：量回来误差 ≤ 0.2 mm，置信度要够高。"""
         path = self._save(scan_like(self.page, 1.2, -0.8), "shift.png")
@@ -69,6 +73,7 @@ class OffsetCalibTests(unittest.TestCase):
         self.assertGreaterEqual(result.confidence, 0.5, result)
         self.assertFalse([w for w in result.warnings if w.startswith("fail:")])
 
+    @needs_numpy
     def test_zero_shift_is_zero(self):
         """没偏的时候不该凭空给出偏移（差一点是像素量化，≤0.15 mm）。"""
         path = self._save(scan_like(self.page), "zero.png")
@@ -78,6 +83,7 @@ class OffsetCalibTests(unittest.TestCase):
         self.assertLessEqual(abs(result.dy_mm), 0.15, result)
         self.assertGreaterEqual(result.confidence, 0.5, result)
 
+    @needs_numpy
     def test_dpi_can_be_inferred(self):
         """不给 dpi 时按图宽 / 页宽反推，结果要和给 dpi 时一样准。"""
         path = self._save(scan_like(self.page, 1.2, -0.8), "infer.png")
@@ -104,13 +110,15 @@ class OffsetCalibTests(unittest.TestCase):
         self.assertTrue(result.warnings, result)
 
     def test_unrelated_aspect_ratio_is_low_confidence(self):
-        """正方形（明显不是 A4）：低置信度，并且提示长宽比不对。"""
+        """正方形（明显不是 A4）：低置信度，并且给出一条能看懂的原因。"""
         side = min(self.page.size)
         path = self._save(self.page.crop((0, 0, side, side)), "square.png")
         result = measure_offset(path, self.grid, dpi=DPI)
 
         self.assertLess(result.confidence, 0.3, result)
-        self.assertTrue(any("A4" in w for w in result.warnings), result)
+        self.assertTrue(result.warnings, result)
+        if offset_calib._HAS_NUMPY:      # 没装 numpy 时原因是「缺 numpy」，不是长宽比
+            self.assertTrue(any("A4" in w for w in result.warnings), result)
 
     def test_tiny_image_is_low_confidence(self):
         """小得离谱的图不能抛异常。"""

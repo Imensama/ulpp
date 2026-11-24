@@ -33,11 +33,17 @@ import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
-import numpy as np
+try:                                  # 量偏移要算二维投影；没装 numpy 时只保留「出校准页」
+    import numpy as np
+
+    _HAS_NUMPY = True
+except ImportError:                   # pragma: no cover - 轻量 exe 走的就是这条
+    np = None                         # type: ignore[assignment]
+    _HAS_NUMPY = False
+
 from PIL import Image, ImageDraw, ImageFont
 
 from .templates import GridSpec   # 和界面同一份 GridSpec（templates 再导出 config 的那个类）
-
 FONT_PATH = r"C:\Windows\Fonts\msyh.ttc"
 DEFAULT_DPI = 300
 FRAME_GRAY = 120           # 格子细线灰度：浅一点，打印不会糊成一坨
@@ -313,6 +319,8 @@ def measure_offset(image_path: str, grid: GridSpec,
         return _fail("fail: grid 的页宽/页高不合法")
     if int(grid.cols) < 1 or int(grid.rows) < 1:
         return _fail("fail: grid 的行列数不合法")
+    if not _HAS_NUMPY:
+        return _fail("fail: 这台机器没装 numpy（pip install numpy 或装 photo extra 后可用）")
 
     try:
         with Image.open(image_path) as handle:
