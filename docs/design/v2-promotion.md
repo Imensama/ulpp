@@ -85,6 +85,11 @@ def measure_offset(image_path: str, grid: GridSpec, dpi: Optional[float] = None)
 
 精度预期：扫描仪 ±0.1 mm；手机拍照受纸翘影响，±0.3~0.5 mm（与量纸同源）。置信度低时不给数字，只提示重扫。
 
+**依赖**：量偏移要算二维投影，用 numpy；但仓库的 `requirements.txt` 里没有 numpy（轻量包与
+Windows CI 都不装）。所以 `offset_calib` 把 numpy 做成了可选导入：没装时**仍能生成校准页**，
+`measure_offset` 返回低置信度并写明原因，不会抛异常。要用自动纠偏得装 numpy
+（`pip install numpy`，或装 `ulpp[photo]`——OpenCV 会带上）。
+
 ## 7. 测试计划
 
 - 新增 `tests/test_offset_calib.py`：合成图（已知平移）→ 量回来误差 ≤ 0.2 mm；

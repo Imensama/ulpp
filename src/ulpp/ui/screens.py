@@ -29,10 +29,10 @@ def _title(app, body, step_id: str) -> None:
              wraplength=app.S(760)).pack(fill="x", pady=(app.S(6), 0))
 
 
-def _tip(app, body, step_id: str) -> None:
+def _tip(app, body, step_id: str, side: str = "top") -> None:
     tk.Label(body, text=app.T(step_id + ".tip"), font=app.F(10), fg=app.P["muted"],
              bg=app.P["bg"], anchor="w", justify="left",
-             wraplength=app.S(760)).pack(fill="x", pady=(app.S(14), 0))
+             wraplength=app.S(760)).pack(side=side, fill="x", pady=(app.S(14), 0))
 
 
 def _button(app, parent, text: str, command: Callable[[], None] = None,
@@ -243,7 +243,9 @@ def build_orient(app, body) -> None:
 def build_output(app, body) -> None:
     _title(app, body, "output")
     row = tk.Frame(body, bg=app.P["bg"])
-    row.pack(fill="x", pady=(app.S(14), 0))
+    # 卡片区先不 pack：等底下的「生成」「提示」用 side="bottom" 占好位置再让它吃剩下的，
+    # 否则窗口一矮（高 DPI / 小屏）提示行和下边距会被挤出可视区。
+    row.pack_forget()
 
     # ---- 左：内容 ----
     left = _card(app, row)
@@ -355,7 +357,7 @@ def build_output(app, body) -> None:
     ttk.Entry(ri, textvariable=app.base_name, width=20, font=app.F(10)).pack(anchor="w")
 
     act = tk.Frame(body, bg=app.P["bg"])
-    act.pack(fill="x", pady=(app.S(10), 0))
+    act.pack(side="bottom", fill="x", pady=(app.S(10), 0))
     _button(app, act, app.T("output.generate"), app.generate, kind="solid",
             size=13).pack(side="left")
     if app.output_path:
@@ -370,7 +372,10 @@ def build_output(app, body) -> None:
         tk.Label(act, text=app.T("output.fail", err=app.output_error), font=app.F(11),
                  fg="#B91C1C", bg=app.P["bg"], anchor="w", justify="left",
                  wraplength=app.S(620)).pack(side="left", padx=(app.S(14), 0))
-    _tip(app, body, "output")
+    _tip(app, body, "output", side="bottom")
+
+    # 提示与按钮区已经占好底部，卡片区拿剩下的高度（文本框自己会缩）
+    row.pack(fill="both", expand=True, pady=(app.S(14), 0))
 
 
 

@@ -161,20 +161,22 @@ class Shell:
         self._dots = tk.Frame(self.root, bg=P["bg"])
         self._dots.pack(fill="x", padx=S(28), pady=(S(10), 0))
 
-        self._editor = tk.Frame(self.root, bg=P["bg"])
-        self._editor.pack(fill="both", expand=True, padx=S(28), pady=(S(6), 0))
-
-        self._footer = tk.Frame(self.root, bg=P["bg"])
-        self._footer.pack(fill="x", padx=S(28), pady=(S(14), S(6)))
-
+        # 先把状态条和页脚用 side="bottom" 钉在底下，再让编辑区吃剩下的空间：
+        # 第 3 步内容最高，按原来的 pack 顺序最后两个会被挤出窗口（状态行只剩半截）。
         status_row = tk.Frame(self.root, bg=P["bg"])
-        status_row.pack(fill="x", padx=S(28), pady=(0, S(10)))
+        status_row.pack(side="bottom", fill="x", padx=S(28), pady=(0, S(10)))
         self._status = tk.Label(status_row, text="", font=self.F(9), fg=P["muted"],
                                 bg=P["bg"], anchor="w")
         self._status.pack(side="left")
         self._progress = ttk.Progressbar(status_row, mode="determinate", length=S(220))
         self._worker = None
         self._queue: "queue.Queue" = queue.Queue()
+
+        self._footer = tk.Frame(self.root, bg=P["bg"])
+        self._footer.pack(side="bottom", fill="x", padx=S(28), pady=(S(14), S(6)))
+
+        self._editor = tk.Frame(self.root, bg=P["bg"])
+        self._editor.pack(fill="both", expand=True, padx=S(28), pady=(S(6), 0))
 
     def switch_lang(self, code: str) -> None:
         """界面内切换中英：重建头部与内容，状态和已填写的内容都不丢。"""
