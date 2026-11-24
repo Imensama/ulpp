@@ -160,15 +160,14 @@ class OrientScreenTests(UiCase):
         # 页脚不再重复放一个「跳过」
         self.assertNotIn(shell.T("skip"), buttons)
 
-    def test_footer_skip_hidden_only_on_orient(self):
+    def test_footer_has_no_skip_anywhere(self):
+        """页脚不再放「跳过」：选纸站的跳过跟「下一步」等价，放纸方向站的跳过在卡片里。"""
         shell = self.make_shell(flow=self.make_flow(index=0))
-        shell.render()
-        first = {w.cget("text") for w in _all(shell.root, "Button")}
-        self.assertIn(shell.T("skip"), first)
-        shell.flow.goto(1)
-        shell.render()
-        orient = {w.cget("text") for w in _all(shell.root, "Button")}
-        self.assertNotIn(shell.T("skip"), orient)
+        for index in (0, 1, 2):
+            shell.flow.goto(index)
+            shell.render()
+            texts = {w.cget("text") for w in _all(shell.root, "Button")}
+            self.assertNotIn(shell.T("skip"), texts, "第 %d 站不该有页脚跳过" % (index + 1))
 
 
 class OutputScreenTests(UiCase):

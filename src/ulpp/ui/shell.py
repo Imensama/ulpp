@@ -258,16 +258,13 @@ class Shell:
         middle.grid(row=1, column=0, sticky="ew")
         screens.build(self, middle)
 
+        # 页脚只放导航：选纸那站的「跳过」跟「下一步」做的是同一件事（都带着当前选中的纸型往前），
+        # 放纸方向那站的两条路在卡片里，所以这里不再出现「跳过」。
         self._clear(self._footer)
         if not self.flow.is_first:
             AppButton(self._footer, self.T("prev"), self.prev_step,
                       button_type="cancel", palette=P, font=self.F, scale=S,
                       size="md").pack(side="left")
-        if not self.flow.is_last and self.flow.current != "orient":
-            # 放纸方向那一站的两条路（进向导 / 跳过）都摆在卡片里，页脚不再重复放一个
-            AppButton(self._footer, self.T("skip"), self.skip_step,
-                      button_type="info", palette=P, font=self.F, scale=S,
-                      size="md").pack(side="left", padx=(S(12), 0))
 
         label = self.T("finish") if self.flow.is_last else self.T("next")
         command = self.finish_step if self.flow.is_last else self.next_step
