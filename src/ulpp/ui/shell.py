@@ -232,8 +232,9 @@ class Shell:
                       button_type="submit", palette=P, font=self.F, scale=S,
                       size="lg").pack(side="left", padx=(S(12), 0))
         if self.output_error:
+            # 琥珀色而不是正红：绝大多数是「还没放内容」这种前置条件，不是炸了
             tk.Label(parent, text=self.T("output.fail", err=self.output_error),
-                     font=self.F(10), fg="#B91C1C", bg=P["bg"], anchor="w",
+                     font=self.F(10), fg="#B45309", bg=P["bg"], anchor="w",
                      justify="left", wraplength=S(420)).pack(side="left", padx=(S(12), 0))
 
     def _state_label(self) -> str:
