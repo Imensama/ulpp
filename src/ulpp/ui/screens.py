@@ -243,6 +243,7 @@ def build_orient(app, body) -> None:
 
 def build_output(app, body) -> None:
     _title(app, body, "output")
+    _tip(app, body, "output")          # 提示放顶部：卡片区再挤也不会被切掉半行
     row = tk.Frame(body, bg=app.P["bg"])
     # 卡片区先不 pack：等底下的「生成」「提示」用 side="bottom" 占好位置再让它吃剩下的，
     # 否则窗口一矮（高 DPI / 小屏）提示行和下边距会被挤出可视区。
@@ -357,26 +358,9 @@ def build_output(app, body) -> None:
     group("output.base_name")
     ttk.Entry(ri, textvariable=app.base_name, width=20, font=app.F(10)).pack(anchor="w")
 
-    act = tk.Frame(body, bg=app.P["bg"])
-    act.pack(side="bottom", fill="x", pady=(app.S(10), 0))
-    _button(app, act, app.T("output.generate"), app.generate, kind="solid",
-            size=13).pack(side="left")
-    if app.output_path:
-        tk.Label(act, text=app.T("output.done", name=Path(app.output_path).name),
-                 font=app.F(11, True), fg=app.P["soft_text"], bg=app.P["soft"],
-                 padx=app.S(12), pady=app.S(8)).pack(side="left", padx=(app.S(14), 0))
-        _button(app, act, app.T("output.open"), app.open_output, kind="solid",
-                size=11).pack(side="left", padx=(app.S(8), 0))
-        _button(app, act, app.T("output.again"), app.generate, kind="ghost",
-                size=10).pack(side="left", padx=(app.S(8), 0))
-    if app.output_error:
-        tk.Label(act, text=app.T("output.fail", err=app.output_error), font=app.F(11),
-                 fg="#B91C1C", bg=app.P["bg"], anchor="w", justify="left",
-                 wraplength=app.S(620)).pack(side="left", padx=(app.S(14), 0))
-    _tip(app, body, "output", side="bottom")
-
-    # 提示与按钮区已经占好底部，卡片区拿剩下的高度（文本框自己会缩）
-    row.pack(fill="both", expand=True, pady=(app.S(14), 0))
+    # 「生成整张 / 打开 / 再出一版 / 出错」不放在这里：它们在页脚（shell.render 里画），
+    # 内容区再矮也压不住，窗口小的时候不会滑到页脚下面去。
+    row.pack(fill="both", expand=True, pady=(app.S(10), 0))
 
 
 

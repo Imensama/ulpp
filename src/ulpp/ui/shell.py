@@ -214,6 +214,28 @@ class Shell:
         padx = int(btn.cget("padx"))
         btn.configure(width=max(1, int(round((floor - 2 * padx) / float(unit)))))
 
+    def _build_output_actions(self, P, S) -> None:
+        """出图站的主动作放页脚：内容区再矮，「生成整张」也不会被页脚压住。"""
+        parent = self._footer
+        if self.output_path:
+            tk.Label(parent, text=self.T("output.done", name=Path(self.output_path).name),
+                     font=self.F(10, True), fg=P["soft_text"], bg=P["soft"],
+                     padx=S(10), pady=S(6)).pack(side="left", padx=(S(12), 0))
+            AppButton(parent, self.T("output.open"), self.open_output,
+                      button_type="submit", palette=P, font=self.F, scale=S,
+                      size="md").pack(side="left", padx=(S(8), 0))
+            AppButton(parent, self.T("output.again"), self.generate,
+                      button_type="cancel", palette=P, font=self.F, scale=S,
+                      size="md").pack(side="left", padx=(S(8), 0))
+        else:
+            AppButton(parent, self.T("output.generate"), self.generate,
+                      button_type="submit", palette=P, font=self.F, scale=S,
+                      size="lg").pack(side="left", padx=(S(12), 0))
+        if self.output_error:
+            tk.Label(parent, text=self.T("output.fail", err=self.output_error),
+                     font=self.F(10), fg="#B91C1C", bg=P["bg"], anchor="w",
+                     justify="left", wraplength=S(420)).pack(side="left", padx=(S(12), 0))
+
     def _state_label(self) -> str:
         """界面上只显示相对 home 的短路径，别把 C:\\Users\\<名字> 摆给用户看。"""
         raw = str(self.state_file)
@@ -274,6 +296,9 @@ class Shell:
         # 长方形比例（宽 ≥ 高 × 1.8），不强行拉成一样宽，否则文字会显得空荡荡。
         self._widen_at_least(primary, ratio=1.8)
         primary.pack(side="right")
+
+        if self.flow.current == "output":
+            self._build_output_actions(P, S)
 
         self._status.configure(text=self._status_text())
 
