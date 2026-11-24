@@ -264,9 +264,11 @@ class Shell:
                       button_type="cancel", palette=P, font=self.F, scale=S,
                       size="md").pack(side="left")
         if not self.flow.is_last:
-            AppButton(self._footer, self.T("skip"), self.skip_step,
+            # 放纸方向那一站的「跳过」要说清楚跳的是什么，并且给到和其他按钮一样的体量
+            skip_key = "skip_orient" if self.flow.current == "orient" else "skip"
+            AppButton(self._footer, self.T(skip_key), self.skip_step,
                       button_type="info", palette=P, font=self.F, scale=S,
-                      size="sm").pack(side="left", padx=(S(12), 0))
+                      size="md").pack(side="left", padx=(S(12), 0))
 
         label = self.T("finish") if self.flow.is_last else self.T("next")
         command = self.finish_step if self.flow.is_last else self.next_step
