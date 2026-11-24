@@ -149,10 +149,26 @@ class OrientScreenTests(UiCase):
     def test_orient_screen_buttons(self):
         shell = self.make_shell(flow=self.make_flow(index=1))
         shell.open_wizard = mock.Mock()
+        shell.skip_step = mock.Mock()
         shell.render()
+        # 两条路都摆在卡片里：进向导 / 跳过向导
         buttons = {w.cget("text"): w for w in _all(shell.root, "Button")}
         buttons[shell.T("orient.calibrate")].invoke()
         shell.open_wizard.assert_called_once()
+        buttons[shell.T("orient.skip")].invoke()
+        shell.skip_step.assert_called_once()
+        # 页脚不再重复放一个「跳过」
+        self.assertNotIn(shell.T("skip"), buttons)
+
+    def test_footer_skip_hidden_only_on_orient(self):
+        shell = self.make_shell(flow=self.make_flow(index=0))
+        shell.render()
+        first = {w.cget("text") for w in _all(shell.root, "Button")}
+        self.assertIn(shell.T("skip"), first)
+        shell.flow.goto(1)
+        shell.render()
+        orient = {w.cget("text") for w in _all(shell.root, "Button")}
+        self.assertNotIn(shell.T("skip"), orient)
 
 
 class OutputScreenTests(UiCase):
