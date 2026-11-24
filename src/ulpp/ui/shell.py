@@ -13,6 +13,7 @@ import queue
 import threading
 import tkinter as tk
 from tkinter import ttk
+from tkinter import font as tkfont
 from typing import Optional
 
 from .. import __version__
@@ -193,6 +194,21 @@ class Shell:
         for child in frame.winfo_children():
             child.destroy()
 
+    @staticmethod
+    def _widen_at_least(btn: "AppButton", ratio: float = 1.8) -> None:
+        """把按钮宽度兜到「高 × ratio」以上，免得短文案把它缩成一个方块。
+
+        tk 的 ``width`` 以字为单位，而中文按字宽直接算是会偏窄、甚至裁字的，
+        所以先拿实际字体的单位字宽把差的像素折算回字宽。
+        """
+        unit = max(1, tkfont.Font(font=btn.cget("font")).measure("0"))
+        need = btn.winfo_reqwidth()
+        floor = int(round(btn.winfo_reqheight() * ratio))
+        if need >= floor:
+            return
+        padx = int(btn.cget("padx"))
+        btn.configure(width=max(1, int(round((floor - 2 * padx) / float(unit)))))
+
     def _state_label(self) -> str:
         """界面上只显示相对 home 的短路径，别把 C:\\Users\\<名字> 摆给用户看。"""
         raw = str(self.state_file)
@@ -249,11 +265,12 @@ class Shell:
 
         label = self.T("finish") if self.flow.is_last else self.T("next")
         command = self.finish_step if self.flow.is_last else self.next_step
-        # 定宽：最后一步的「完成」比「下一步 →」短，不定宽的话按钮会缩成方块。
-        # 9 个字宽是按最长的「下一步 →」量的，两种文案下按钮同样大小、都不会被裁。
-        AppButton(self._footer, label, command, button_type="submit",
-                  palette=P, font=self.F, scale=S, size="lg",
-                  width=9).pack(side="right")
+        primary = AppButton(self._footer, label, command, button_type="submit",
+                            palette=P, font=self.F, scale=S, size="lg")
+        # 最后一步的「完成」比「下一步 →」短得多，不兜底会缩成方块；只兜到一个
+        # 长方形比例（宽 ≥ 高 × 1.8），不强行拉成一样宽，否则文字会显得空荡荡。
+        self._widen_at_least(primary, ratio=1.8)
+        primary.pack(side="right")
 
         self._status.configure(text=self._status_text())
 
