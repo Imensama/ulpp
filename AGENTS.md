@@ -73,7 +73,7 @@ python -m PyInstaller --noconfirm packaging/ulpp_onedir.spec
 
 ## 发版检查清单（打 tag 前逐条过）
 
-1. **版本号三处一致**：`pyproject.toml`、`src/ulpp/__init__.py`、tag 名（`v1.4.1` ↔ `1.4.1`），
+1. **版本号三处一致**：`pyproject.toml`、`src/ulpp/__init__.py`、tag 名（`v1.4.3` ↔ `1.4.3`），
    否则 `publish.yml` 的校验会直接失败。
 2. **脱敏**：
    - 仓库里不能有客户图纸、真实扫描件、截图里的公司名/型号；

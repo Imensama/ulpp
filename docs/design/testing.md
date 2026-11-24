@@ -55,7 +55,7 @@ UI 用例的约定：
 本机（macOS，Python 3.9，Tk 8.5.9，numpy/OpenCV 已装）：
 
 ```text
-Ran 781 tests in ~53s
+Ran 782 tests in ~53s
 TOTAL  6036 statements  12 missed  99%
 ```
 
