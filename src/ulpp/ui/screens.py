@@ -222,6 +222,14 @@ def build_sheet(app, body) -> None:
 
 
 # ---------------------------------------------------------------- 第 2 屏
+def _link(app, parent, text: str, command: Callable[[], None]) -> tk.Label:
+    """一行「链接」：看起来像正文里的蓝色字，点一下触发命令。比按钮轻，放内容区不抢眼。"""
+    lbl = tk.Label(parent, text=text, font=app.F(10), fg=app.P["accent"],
+                   bg=app.P["bg"], anchor="w", cursor="hand2")
+    lbl.bind("<Button-1>", lambda _e: command())
+    return lbl
+
+
 def build_orient(app, body) -> None:
     _title(app, body, "orient")
     card = _card(app, body)
@@ -235,6 +243,10 @@ def build_orient(app, body) -> None:
             size=12).pack(side="left")
     tk.Label(row, text=app.T("orient.wait"), font=app.F(10), fg=app.P["muted"],
              bg=app.P["card"]).pack(side="left", padx=(app.S(12), 0))
+    # 跳过放在内容区：视线本来就在这张卡片上，比缩在页脚角落好找，又不用多一个按钮
+    skip_row = tk.Frame(body, bg=app.P["bg"])
+    skip_row.pack(fill="x", pady=(app.S(10), 0))
+    _link(app, skip_row, app.T("orient.skip_link"), app.skip_step).pack(side="left")
     _tip(app, body, "orient")
     if app.flow.is_last:
         return
