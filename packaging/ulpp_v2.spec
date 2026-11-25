@@ -60,6 +60,7 @@ exe = EXE(
     strip=False,
     upx=False,          # 不压壳：避免杀软误报
     console=False,
+    icon=os.path.join(ROOT, "packaging", "ulpp.ico"),
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
