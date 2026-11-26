@@ -31,7 +31,9 @@ MARGIN_TOP = 6.0
 
 PAPER = (252, 251, 246)      # 纸面（暖白）
 LABEL = (253, 253, 250)      # 标签还在（更白一点）
-LINER = (214, 219, 244)      # 撕掉后露出的底纸（偏蓝）
+LINER = (237, 241, 251)      # 撕掉后露出的底纸（浅蓝紫，实测样张就是这个色阶）
+STAIN = (226, 222, 206)      # 水渍（偏黄）
+INK = (35, 35, 35)           # 打印的墨
 GRID = (198, 198, 192)       # 格线
 
 
@@ -42,7 +44,8 @@ def make_grid() -> GridSpec:
 
 
 def render(peeled: Sequence[int] = (), partial: Sequence[int] = (),
-           damaged: Sequence[int] = ()) -> Image.Image:
+           damaged: Sequence[int] = (), printed: Sequence[int] = (),
+           stained: Sequence[int] = ()) -> Image.Image:
     """画一张标签纸。索引口径：行优先，0 基（和分析结果一致）。"""
     block_w = (COLS - 1) * PITCH_X + CELL_W
     left = (PAGE_W - block_w) / 2.0
@@ -65,6 +68,12 @@ def render(peeled: Sequence[int] = (), partial: Sequence[int] = (),
                 d.rectangle([x0, y0, (x0 + x1) / 2, y1], fill=LINER)
             else:
                 d.rectangle([x0, y0, x1, y1], fill=LABEL)
+            if i in stained:                       # 水渍：一块偏黄的污迹
+                d.rectangle([x0 + 6, y0 + 6, x1 - 30, y1 - 30], fill=STAIN)
+            if i in printed:                       # 打印：几道墨迹（约 5% 面积）
+                for k in range(3):
+                    yy = y0 + 20 + k * 26
+                    d.rectangle([x0 + 24, yy, x1 - 24, yy + 9], fill=INK)
             if i in damaged:                       # 刀痕/撕口：一条深色斜线
                 d.line([x0 + 8, y1 - 8, x1 - 20, y1 - 40], fill=(120, 120, 120), width=6)
 
@@ -139,6 +148,28 @@ class ClassifyTests(Case):
         verdict = analyze(self.save(render(peeled=[0])), self.grid, dpi=DPI)
         text = describe(verdict)
         self.assertIn("已用", text)
+
+    def test_printed_cells_are_used_even_if_rotated(self):
+        """打印过的格算「已用」——歪不歪、转不转都靠墨迹占比，不看方向。"""
+        printed = list(range(0, 10))     # 两整排打印过
+        verdict = analyze(self.save(render(printed=printed)), self.grid, dpi=DPI)
+        self.assertEqual(sorted(verdict.used), printed)
+        self.assertEqual(verdict.unsure, [])
+
+    def test_printed_and_peeled_can_coexist(self):
+        verdict = analyze(self.save(render(printed=[0, 1, 2], peeled=[40, 41])),
+                          self.grid, dpi=DPI)
+        self.assertEqual(sorted(verdict.used), [0, 1, 2, 40, 41])
+
+    def test_water_damage_turns_off_peel_guess(self):
+        """纸被泡过：撕掉判别关掉，偏暗的格给「拿不准」，不硬猜。"""
+        stained = [20, 21, 22, 23, 24, 25, 26]
+        verdict = analyze(self.save(render(stained=stained, peeled=[40])),
+                          self.grid, dpi=DPI)
+        self.assertTrue(any(w.startswith("sheet:") for w in verdict.warnings), verdict.warnings)
+        self.assertNotIn(40, verdict.used)               # 不再当作"撕掉"
+        self.assertIn(40, verdict.unsure)
+        self.assertLessEqual(verdict.confidence, 0.6)
 
 
 @needs_numpy

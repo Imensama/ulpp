@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
 """接着打：从扫描件判断哪些格已经用过了。
 
-背景：用剩的半张纸，原来要一格一格右键标灰。这里把它自动化——扫一张（300dpi 平板最好），
-量出格阵、逐格判断「空白 / 已用 / 拿不准」。
+用剩的半张纸，原来要一格一格右键标灰。这里自动化：扫一张（300dpi 平板最好），
+量出格阵，逐格判断「已用 / 空 / 拿不准」。
 
-判据（真实样张验证过，分离度很大）：
+三种「已经不能再用」的情形，分别有判据：
 
-- 每格统计「蓝偏」= B − (R+G)/2。标签撕掉后露出**离型底纸**，底纸通常偏蓝；
-  标签还在时是暖白。
-- 先在所有格子的中位蓝偏上做 Otsu 切一刀，得到「这一张纸的底纸色」；
-  再用**每格里蓝偏超过阈值像素的占比**（剥掉比例）来判：
-  ``>= 0.6`` 已用、``<= 0.05`` 空、中间是「部分撕，拿不准」。
-- 另外看灰度标准差：纸面被剪刀切过、撕口翘起、压痕明显时会显著偏高 → 也标成「拿不准」。
+1. **打印过**：格子里有墨迹——比本格底色暗 40 级以上的像素占比 ``>= 1.5%``。这条最稳，
+   打印歪了、倒了都不影响。
+2. **撕掉**：露出离型底纸，底纸通常偏蓝。先在所有格的中位蓝偏上做 Otsu 得到"这张纸的底纸色"，
+   再看每格里超过阈值的像素占比：``>= 0.6`` 且蓝区够平滑（标准差 < 6）才算。
+3. **破损**：剪刀切口、撕口翘起会让灰度标准差显著偏高 → 拿不准。
 
-只用 Pillow + numpy（和各处一致：没装 numpy 就只给低置信度，不抛异常）。
+**水渍会让第 2 条失效**：泡过水的纸，污渍本身就偏蓝，和离型底纸分不开。所以先看整张纸的
+底色离散度——非印刷格的底色 p90−p10 超过 15 级就判定"这张纸被泡过/脏污严重"，此时**关掉撕掉
+判别**，把底色偏暗的格一律标成「拿不准」，提示用户手动确认。宁可让他点两下，也不给错数。
+
+只用 Pillow + numpy（没装 numpy 时只给低置信度，不抛异常）。
 
 用法::
 
@@ -39,10 +42,15 @@ from PIL import Image
 
 from .templates import GridSpec
 
-# 判据阈值（真实样张上：空 0.00 / 已用 0.99 / 部分撕 0.15，间隔很宽）
-USED_FRACTION = 0.60
+# 判据阈值（真实样张验证：印刷格 5%+ 墨迹，空格 0.0~0.1%）
+INK_USED = 1.5                        # 墨迹占比 (%) 超过这个 → 打印过
+INK_DARK = 40                         # 比本格底色暗这么多才算墨
+USED_FRACTION = 0.60                  # 蓝区占比超过这个 → 撕掉
 EMPTY_FRACTION = 0.05
-UNSURE_TEXTURE = 3.2                  # 标准差高于「整张纸中位数 + 3.2」算疑似破损
+PEEL_SMOOTH = 6.0                     # 蓝区标准差大于这个说明是水渍不是离型纸
+UNSURE_TEXTURE = 3.2                  # 相对中位数的标准差余量：刀痕/撕口
+STAIN_SPREAD = 15.0                   # 非印刷格底色的 p90−p10 超过这个 → 纸被泡过
+STAIN_DARKER = 6.0                    # 比参考底色暗这么多 → 当成污渍
 INSET = 0.12                          # 每格四周留 12% 不用：避开格线与纸边
 SEARCH_MM = 4.0                       # 相位在期望位置 ±4 mm 内找
 MIN_SPREAD = 2.0                      # 各格蓝偏差距小于这个值 → 视为整张都空
@@ -56,6 +64,7 @@ class CellVerdict:
     col: int
     index: int
     state: str                        # "used" | "empty" | "unsure"
+    ink: float                        # 墨迹占比 %
     peeled: float                     # 剥掉比例 0~1
     blueness: float                   # 中位蓝偏（相对值）
     texture: float                    # 灰度标准差
@@ -167,40 +176,69 @@ def _cell_patch(arr, xs: Sequence[int], ys: Sequence[int], r: int, c: int):
     return arr[max(0, y0 + dy):min(h, y1 - dy), max(0, x0 + dx):min(w, x1 - dx)]
 
 
-def _cell_stats(grid: GridSpec, arr, blue, gray, xs, ys):
-    """逐格算中位蓝偏与灰度标准差。"""
+def _cell_stats(grid: GridSpec, blue, gray, xs, ys):
+    """逐格算：底色中位灰度、墨迹占比、蓝偏中位、蓝区标准差、灰度标准差。"""
     rows, cols = int(grid.rows), int(grid.cols)
-    med = np.zeros((rows, cols), dtype=np.float64)
-    texture = np.zeros_like(med)
+    base = np.zeros((rows, cols))
+    ink = np.zeros((rows, cols))
+    med = np.zeros((rows, cols))
+    bstd = np.zeros((rows, cols))
+    texture = np.zeros((rows, cols))
     for r in range(rows):
         for c in range(cols):
-            patch_blue = _cell_patch(blue, xs, ys, r, c)
-            patch_gray = _cell_patch(gray, xs, ys, r, c)
-            if patch_blue.size == 0:
+            g = _cell_patch(gray, xs, ys, r, c)
+            b = _cell_patch(blue, xs, ys, r, c)
+            if g.size == 0:
                 return None
-            med[r, c] = float(np.median(patch_blue))
-            texture[r, c] = float(patch_gray.std())
-    return med, texture
+            cell_base = float(np.median(g))
+            base[r, c] = cell_base
+            ink[r, c] = float((g < cell_base - INK_DARK).mean() * 100)
+            med[r, c] = float(np.median(b))
+            bstd[r, c] = float(b.std())
+            texture[r, c] = float(g.std())
+    return base, ink, med, bstd, texture
 
 
-def _classify(peeled: float, texture: float, texture_limit: float) -> Tuple[str, str]:
+def _sheet_is_damaged(base, ink) -> Tuple[bool, float]:
+    """非印刷格的底色散不散：散了说明水渍/脏污严重，撕掉判别要关掉。"""
+    plain = base[ink < INK_USED]
+    if plain.size < 4:
+        return False, float(np.median(base))
+    lo, hi = np.percentile(plain, 10), np.percentile(plain, 90)
+    return bool(hi - lo > STAIN_SPREAD), float(np.median(plain))
+
+
+def _classify_cell(ink: float, base: float, peeled: float, bstd: float,
+                   texture: float, texture_limit: float, damaged: bool,
+                   ref_base: float) -> Tuple[str, str]:
     """单格状态：used / empty / unsure，附带一句原因。"""
-    if peeled >= USED_FRACTION:
+    if ink >= INK_USED:
         return "used", ""
-    if peeled <= EMPTY_FRACTION and texture <= texture_limit:
-        return "empty", ""
-    if peeled <= EMPTY_FRACTION:
+    dirty = base < ref_base - STAIN_DARKER
+    if damaged and dirty:
+        return "unsure", "有水渍/污迹，看着像空的不一定空"
+    if not damaged and peeled >= USED_FRACTION and bstd < PEEL_SMOOTH:
+        return "used", ""
+    if peeled > EMPTY_FRACTION or dirty:
+        if peeled >= USED_FRACTION:
+            return "unsure", "看不出是撕掉还是水渍，确认一下"
+        return "unsure", "只撕掉了一部分（%.0f%%），确认一下再用" % (peeled * 100)
+    if texture > texture_limit:
         return "unsure", "纸面异常（可能有刀痕/撕口），确认一下"
-    return "unsure", "只撕掉了一部分（%.0f%%），确认一下再用" % (peeled * 100)
+    return "empty", ""
 
 
-def _build_verdict(grid: GridSpec, blue, med, texture, xs, ys, w: int, h: int,
+def _build_verdict(grid: GridSpec, blue, base, ink, med, bstd, texture, xs, ys,
                    warnings: List[str]) -> ScanVerdict:
     """把逐格统计翻成结论。"""
     rows, cols = int(grid.rows), int(grid.cols)
+    damaged, ref_base = _sheet_is_damaged(base, ink)
+    if damaged:
+        warnings.append("sheet: 这张纸底色不匀（水渍/污迹），「撕掉」判别已关闭，暗格请手动确认")
+
     thr = _otsu(med.ravel())
-    if thr is None:                   # 各格颜色分不开：整张都当空的
-        warnings.append("sheet: 各格颜色几乎一致，按「整张都是空的」处理")
+    if thr is None:                   # 各格颜色分不开：不靠蓝偏判撕掉
+        warnings.append("sheet: 各格颜色几乎一致，只按「有没有墨迹」判")
         thr = float(med.max()) + 1.0
     texture_limit = float(np.median(texture)) + UNSURE_TEXTURE
 
@@ -210,22 +248,28 @@ def _build_verdict(grid: GridSpec, blue, med, texture, xs, ys, w: int, h: int,
         for c in range(cols):
             patch_blue = _cell_patch(blue, xs, ys, r, c)
             peeled = float((patch_blue > thr).mean()) if patch_blue.size else 0.0
-            tex = float(texture[r, c])
-            state, reason = _classify(peeled, tex, texture_limit)
+            state, reason = _classify_cell(
+                float(ink[r, c]), float(base[r, c]), peeled, float(bstd[r, c]),
+                float(texture[r, c]), texture_limit, damaged, ref_base)
             index = r * cols + c
             if state == "used":
                 verdict.used.append(index)
             elif state == "unsure":
                 verdict.unsure.append(index)
             line.append(CellVerdict(row=r + 1, col=c + 1, index=index, state=state,
-                                    peeled=round(peeled, 3), blueness=round(float(med[r, c]), 1),
-                                    texture=round(tex, 2), reason=reason))
+                                    ink=round(float(ink[r, c]), 2),
+                                    peeled=round(peeled, 3),
+                                    blueness=round(float(med[r, c]), 1),
+                                    texture=round(float(texture[r, c]), 2),
+                                    reason=reason))
         verdict.cells.append(line)
 
     spread = float(med.max() - np.median(med)) if med.size else 0.0
     conf = 0.55 + min(0.35, spread / 20.0)
     if verdict.used or verdict.unsure:
         conf -= 0.05 * len(verdict.unsure) / max(1, len(verdict.used) + len(verdict.unsure))
+    if damaged:
+        conf = min(conf, 0.6)         # 泡过的纸，结论只当参考
     verdict.confidence = round(max(0.0, min(1.0, conf)), 2)
     return verdict
 
@@ -251,11 +295,11 @@ def analyze(image_path: str, grid: GridSpec,
     if lines is None:
         return _fail("格阵跑到画面外了，检查纸型或换一张图")
     xs, ys = lines
-    stats = _cell_stats(grid, arr, blue, gray, xs, ys)
+    stats = _cell_stats(grid, blue, gray, xs, ys)
     if stats is None:
         return _fail("格子太小，图分辨率不够")
-    med, texture = stats
-    return _build_verdict(grid, blue, med, texture, xs, ys, w, h, [])
+    base, ink, med, bstd, texture = stats
+    return _build_verdict(grid, blue, base, ink, med, bstd, texture, xs, ys, [])
 
 
 def describe(verdict: ScanVerdict) -> str:
