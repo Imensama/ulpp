@@ -161,15 +161,21 @@ class ClassifyTests(Case):
                           self.grid, dpi=DPI)
         self.assertEqual(sorted(verdict.used), [0, 1, 2, 40, 41])
 
-    def test_water_damage_turns_off_peel_guess(self):
-        """纸被泡过：撕掉判别关掉，偏暗的格给「拿不准」，不硬猜。"""
-        stained = [20, 21, 22, 23, 24, 25, 26]
+    def test_water_damage_still_recognises_peeled_cells(self):
+        """纸被泡过也要认得出「撕掉」：真撕掉是蓝偏 +11~+20，水渍是负的。"""
+        stained = [20, 23, 24, 25, 26, 27, 28]
         verdict = analyze(self.save(render(stained=stained, peeled=[40])),
                           self.grid, dpi=DPI)
         self.assertTrue(any(w.startswith("sheet:") for w in verdict.warnings), verdict.warnings)
-        self.assertNotIn(40, verdict.used)               # 不再当作"撕掉"
-        self.assertIn(40, verdict.unsure)
-        self.assertLessEqual(verdict.confidence, 0.6)
+        self.assertIn(40, verdict.used)                  # 撕掉照样认出来
+        self.assertLessEqual(verdict.confidence, 0.6)    # 但整体置信度封顶
+
+    def test_water_stain_cell_is_unsure(self):
+        """水渍格（偏暗、蓝偏为负）不能算空，也不能算已用。"""
+        verdict = analyze(self.save(render(stained=[7])), self.grid, dpi=DPI)
+        self.assertIn(7, verdict.unsure)
+        self.assertNotIn(7, verdict.used)
+        self.assertTrue(verdict.cells[7 // COLS][7 % COLS].reason)
 
 
 @needs_numpy

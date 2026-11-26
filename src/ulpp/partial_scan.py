@@ -47,7 +47,6 @@ INK_USED = 1.5                        # 墨迹占比 (%) 超过这个 → 打印
 INK_DARK = 40                         # 比本格底色暗这么多才算墨
 USED_FRACTION = 0.60                  # 蓝区占比超过这个 → 撕掉
 EMPTY_FRACTION = 0.05
-PEEL_SMOOTH = 6.0                     # 蓝区标准差大于这个说明是水渍不是离型纸
 UNSURE_TEXTURE = 3.2                  # 相对中位数的标准差余量：刀痕/撕口
 STAIN_SPREAD = 15.0                   # 非印刷格底色的 p90−p10 超过这个 → 纸被泡过
 STAIN_DARKER = 6.0                    # 比参考底色暗这么多 → 当成污渍
@@ -208,21 +207,24 @@ def _sheet_is_damaged(base, ink) -> Tuple[bool, float]:
     return bool(hi - lo > STAIN_SPREAD), float(np.median(plain))
 
 
-def _classify_cell(ink: float, base: float, peeled: float, bstd: float,
+def _classify_cell(ink: float, base: float, peeled: float,
                    texture: float, texture_limit: float, damaged: bool,
                    ref_base: float) -> Tuple[str, str]:
-    """单格状态：used / empty / unsure，附带一句原因。"""
+    """单格状态：used / empty / unsure，附带一句原因。
+
+    ``damaged`` 只用来"多标几个拿不准"，**不能用来关掉撕掉判别**——实测泡过水的纸上，
+    真撕掉的格子剥掉比例 0.92~0.99、蓝偏 +11~+20；水渍格是 0.00、蓝偏 −17~−24，
+    两者差得非常远。关掉判别只会把对的答案降级成「拿不准」。
+    """
     if ink >= INK_USED:
         return "used", ""
-    dirty = base < ref_base - STAIN_DARKER
-    if damaged and dirty:
-        return "unsure", "有水渍/污迹，看着像空的不一定空"
-    if not damaged and peeled >= USED_FRACTION and bstd < PEEL_SMOOTH:
+    if peeled >= USED_FRACTION:
         return "used", ""
-    if peeled > EMPTY_FRACTION or dirty:
-        if peeled >= USED_FRACTION:
-            return "unsure", "看不出是撕掉还是水渍，确认一下"
+    if peeled > EMPTY_FRACTION:
         return "unsure", "只撕掉了一部分（%.0f%%），确认一下再用" % (peeled * 100)
+    dirty = base < ref_base - STAIN_DARKER
+    if dirty or (damaged and texture > texture_limit):
+        return "unsure", "有水渍/污迹，看着像空的不一定空"
     if texture > texture_limit:
         return "unsure", "纸面异常（可能有刀痕/撕口），确认一下"
     return "empty", ""
@@ -249,7 +251,7 @@ def _build_verdict(grid: GridSpec, blue, base, ink, med, bstd, texture, xs, ys,
             patch_blue = _cell_patch(blue, xs, ys, r, c)
             peeled = float((patch_blue > thr).mean()) if patch_blue.size else 0.0
             state, reason = _classify_cell(
-                float(ink[r, c]), float(base[r, c]), peeled, float(bstd[r, c]),
+                float(ink[r, c]), float(base[r, c]), peeled,
                 float(texture[r, c]), texture_limit, damaged, ref_base)
             index = r * cols + c
             if state == "used":
