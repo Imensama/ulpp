@@ -130,7 +130,7 @@ def _pdf_image(image_path: str) -> Tuple[Optional[Image.Image], List[str]]:
 
     warnings: List[str] = []
     best, best_area = None, -1
-    total = skipped = 0
+    total = skipped = declared = 0     # declared 必须在 try 之前初始化：坏文件会直接抛异常
     try:
         reader = PdfReader(image_path)
         pages = reader.pages

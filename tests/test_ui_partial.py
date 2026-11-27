@@ -275,3 +275,39 @@ class PartialWindowTests(UiCase):
         shell, win = self._window()
         win._centre()
         self.assertIn("+", win.geometry())
+
+    def test_click_maps_to_cell_row_and_column(self):
+        """画布上只有一个点击处理器：按坐标分派到格子 / 行头 / 列头。"""
+        shell, win = self._window()
+        x_base, y_base, cw, ch, head, cols, rows = win._grid_geo
+
+        def click(x, y):
+            win._on_grid_click(mock.Mock(x=int(x), y=int(y)))
+
+        click(x_base + cw / 2, y_base + ch / 2)      # 第一格
+        self.assertFalse(win.sheet.is_free(0))
+        click(x_base + cw / 2, head / 2)             # 第 1 列列头
+        after_col = set(win.sheet.used)
+        self.assertGreater(len(after_col), 1)
+        click(head / 2, y_base + ch / 2)             # 第 1 行行头
+        self.assertGreaterEqual(len(win.sheet.used), len(after_col))
+
+    def test_click_before_grid_ready_is_ignored(self):
+        shell, win = self._window()
+        win._grid_geo = None
+        win._on_grid_click(mock.Mock(x=10, y=10))    # 不该抛
+        self.assertEqual(win.sheet.used, [])
+
+    def test_scan_reports_already_marked(self):
+        """重扫同一张纸：识别出的格子本来就灰着，要明说"没有新增"。"""
+        from ulpp.partial_scan import ScanVerdict
+
+        shell, win = self._window()
+        win.sheet.mark_used([3])
+        fake = ScanVerdict(used=[3], unsure=[], confidence=0.9)
+        with mock.patch.object(partial_mod.filedialog, "askopenfilename",
+                               return_value="C:/fake/scan.png"), \
+                mock.patch("ulpp.partial_scan.analyze", return_value=fake):
+            win._scan_used()
+        self.pump()
+        self.assertIn("之前就标过", win.scan_summary)
