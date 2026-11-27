@@ -36,6 +36,73 @@ class PartialWindowTests(UiCase):
         self.assertGreater(len(win._canvas.find_all()), 0)
         self.assertEqual(win.sheet_var.get(), win.sheet.name)
 
+    def test_scan_button_marks_used_cells(self):
+        """「扫描识别」把识别出的格子一次性记进这张纸，拿不准的留给用户点。"""
+        from ulpp.partial_scan import CellVerdict, ScanVerdict
+
+        shell, win = self._window()
+        fake = ScanVerdict(used=[0, 1, 5], unsure=[2], confidence=0.9)
+        fake.cells = [[CellVerdict(row=1, col=1, index=0, state="used", ink=0, peeled=1,
+                                   blueness=10, texture=1)]]
+        with mock.patch.object(partial_mod.filedialog, "askopenfilename",
+                               return_value="C:/fake/scan.png"), \
+                mock.patch("ulpp.partial_scan.analyze", return_value=fake):
+            win._scan_used()
+        self.pump()
+        self.assertEqual(sorted(win.sheet.used), [0, 1, 5])
+        self.assertIn("已用", win.scan_summary)
+        self.assertIsNone(win.error)
+
+    def test_scan_cancelled_changes_nothing(self):
+        shell, win = self._window()
+        before = list(win.sheet.used)
+        with mock.patch.object(partial_mod.filedialog, "askopenfilename", return_value=""):
+            win._scan_used()
+        self.pump()
+        self.assertEqual(list(win.sheet.used), before)
+
+    def test_picks_the_sheet_for_the_current_paper(self):
+        """换了纸型再进来，要开对应的那张记录，不能一直开存档里最后一张。"""
+        shell, win = self._window()
+        # 先记下当前格阵，再换一套完全不同的纸型
+        old = win.sheet.grid_spec
+        from ulpp.config import GridSpec
+
+        other = GridSpec(cols=2, rows=2, cell_w=90.0, cell_h=60.0,
+                         pitch_x=95.0, pitch_y=65.0, margin_top=10.0)
+        shell.templates = []                      # 逼 _selected_grid 用别的路径
+        shell._selected_grid = lambda: other
+        win2 = PartialWindow(shell)
+        self.pump()
+        self.close_later(win2)
+        self.assertNotEqual(win2.sheet.grid_spec, old)
+        self.assertEqual(win2.sheet.grid_spec, other)
+        """两种顺序都支持：先在窗口里定格子，再从这里直接挑文件。"""
+        shell, win = self._window()
+        shell.pick_pdfs = mock.Mock()
+        win._add_files()
+        shell.pick_pdfs.assert_called_once()
+
+    def test_type_labels_closes_and_focuses_main_box(self):
+        shell, win = self._window()
+        shell.focus_text = mock.Mock()
+        win._back_to_text()
+        shell.focus_text.assert_called_once()
+
+    def test_scan_failure_shows_reason(self):
+        from ulpp.partial_scan import ScanVerdict
+
+        shell, win = self._window()
+        before = list(win.sheet.used)
+        bad = ScanVerdict(confidence=0.0, warnings=["fail: 读不了这张图"])
+        with mock.patch.object(partial_mod.filedialog, "askopenfilename",
+                               return_value="C:/fake/broken.png"), \
+                mock.patch("ulpp.partial_scan.analyze", return_value=bad):
+            win._scan_used()
+        self.pump()
+        self.assertEqual(list(win.sheet.used), before)
+        self.assertIn("读不了这张图", win.error or "")
+
     def test_store_unavailable_shows_error(self):
         shell = self._shell()
         shell.store = None

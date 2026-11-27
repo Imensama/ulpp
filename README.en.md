@@ -112,19 +112,24 @@ then **Generate**.
 
 ## Resuming a half-used sheet
 
-Bottom-right **Resume…** opens a separate window (the normal flow is untouched).
+The **Resume (half sheet)…** button in step 3's footer opens a separate window.
 
-1. **Create the half-used sheet**: pick a preset, or type columns/rows/cell/pitch
-2. **Mark used cells**: right-click to grey them out (right-click again to undo)
-3. **Place content**: select an item, left-click a free cell; or “fill all free cells”
-4. **Generate**: only the selected cells are printed; other positions stay blank — print at **100%**
-5. **Mark used** after printing; one-step undo if you slip
+1. **Create the half-used sheet**: create one for the current paper, or pick a previous record
+2. **Mark used cells**: left-click a cell to grey it out (click again to undo); tap the row/column
+   headers to toggle a whole line
+3. **Or let it mark them**: “Scan used cells…” → pick a scan (PDF or image) → used cells turn grey,
+   uncertain ones turn orange (one click to accept). Printed, peeled and scissor-cut cells are all
+   recognised, and the summary tells you how many were newly marked
+4. **Add content**: right there via “Choose files…”, or load it in the main window first
+5. **Generate**: “Fill free cells” — only free cells are printed, everything else stays blank;
+   print at **100%**
 
 Records live in `%APPDATA%\ulpp\sheets.json` (macOS/Linux: `~/.config/ulpp/sheets.json`);
 old `inventory.json` is migrated automatically.
 
 **Limits**: only cells whose labels are still attached can be printed; consumer printers have
-±1–2 mm re-feed error; laser preferred (inkjet may smudge on used liner).
+±1–2 mm re-feed error; laser preferred (inkjet may smudge on used liner). Vendors generally advise
+against re-feeding sheets with missing labels — clean, flat sheets are usually fine, curled ones are not.
 
 ---
 

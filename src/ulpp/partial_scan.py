@@ -100,13 +100,86 @@ def _grid_ok(grid: GridSpec) -> bool:
         and int(grid.cols) >= 1 and int(grid.rows) >= 1
 
 
-def _load_rgb(image_path: str) -> Optional["np.ndarray"]:
-    """读成 HxWx3 的 int16 数组；读不了返回 None。"""
+def _pdf_image_count(page) -> int:
+    """数一页里有几张图（不解码，JBIG2 也能数）。"""
     try:
+        resources = page.get("/Resources")
+        resources = resources.get_object() if hasattr(resources, "get_object") else resources
+        xobjects = resources.get("/XObject") if resources else None
+        xobjects = xobjects.get_object() if hasattr(xobjects, "get_object") else xobjects
+        if not xobjects:
+            return 0
+        count = 0
+        for _name, ref in xobjects.items():
+            obj = ref.get_object() if hasattr(ref, "get_object") else ref
+            if obj is not None and obj.get("/Subtype") == "/Image":
+                count += 1
+        return count
+    except Exception:
+        return 0
+
+
+def _pdf_image(image_path: str) -> Tuple[Optional[Image.Image], List[str]]:
+    """PDF 里挑**能解码的最大**一张图，顺带报告"读不全"的情况。
+
+    扫描仪常把一页拆成"一张彩色底图 + 一堆 JBIG2 黑白小图（文字/线条层）"，
+    而 pypdf 解 JBIG2 需要外挂 jbig2dec。这里逐张试、解不了的跳过，
+    迭代中途抛异常也不影响已经拿到的那张；读不全时给出提示，别让用户以为判读是准的。
+    """
+    from pypdf import PdfReader
+
+    warnings: List[str] = []
+    best, best_area = None, -1
+    total = skipped = 0
+    try:
+        reader = PdfReader(image_path)
+        pages = reader.pages
+        if pages:
+            declared = _pdf_image_count(pages[0])
+            for image in pages[0].images:
+                total += 1
+                try:
+                    obj = image.image
+                except Exception:     # JBIG2 等：这台机器没装解码器
+                    skipped += 1
+                    continue
+                area = obj.size[0] * obj.size[1]
+                if area > best_area:
+                    best, best_area = obj, area
+    except Exception:                 # 迭代到解不了的那张会抛，前面拿到的够用
+        pass
+    if declared > total:
+        skipped += declared - total        # 迭代中途抛异常时，没来得及试的那几张也算跳过
+    if max(total, declared) > 1:
+        warnings.append("pdf_layered: 这份 PDF 是多层扫描（%d 张图），文字层可能没读到，"
+                        "判读仅供参考（建议另存成 PNG/JPG 再识别）" % max(total, declared))
+    if skipped:
+        warnings.append("pdf_skipped: 有 %d 张图用了程序解不了的格式（JBIG2/JPX），已跳过"
+                        % skipped)
+    return best, warnings
+
+
+def _load_rgb(image_path: str) -> Tuple[Optional["np.ndarray"], List[str]]:
+    """读成 HxWx3 的 int16 数组；读不了返回 (None, 原因)。
+
+    扫描仪直接存的往往就是 PDF，所以 PDF 也要认（和 ``scan`` 一致走 pypdf，不加新依赖）。
+    """
+    try:
+        if str(image_path).lower().endswith(".pdf"):
+            from .scan import render_pdf_page
+
+            rendered = render_pdf_page(image_path)      # 整页渲染：多层扫描也能读全
+            if rendered is not None:
+                img, _page_w, _page_h = rendered
+                return np.asarray(img).astype(np.int16), []
+            obj, warns = _pdf_image(image_path)
+            if obj is None:
+                return None, warns + ["这份 PDF 里没有能读的位图（可能是矢量图或全是 JBIG2）"]
+            return np.asarray(obj.convert("RGB")).astype(np.int16), warns
         with Image.open(image_path) as handle:
-            return np.asarray(handle.convert("RGB")).astype(np.int16)
+            return np.asarray(handle.convert("RGB")).astype(np.int16), []
     except Exception:                 # 打不开 / 不是图 / 没权限
-        return None
+        return None, []
 
 
 def _profile(profile) -> Tuple["np.ndarray", "np.ndarray"]:
@@ -267,9 +340,10 @@ def _build_verdict(grid: GridSpec, blue, base, ink, med, bstd, texture, xs, ys,
         verdict.cells.append(line)
 
     spread = float(med.max() - np.median(med)) if med.size else 0.0
-    conf = 0.55 + min(0.35, spread / 20.0)
-    if verdict.used or verdict.unsure:
-        conf -= 0.05 * len(verdict.unsure) / max(1, len(verdict.used) + len(verdict.unsure))
+    total = max(1, rows * cols)
+    clear = (len(verdict.used) + (total - len(verdict.used) - len(verdict.unsure))) / total
+    # 置信度主要看"有多少格给出了明确结论"；颜色分得开（spread）只算加分项
+    conf = 0.55 + 0.40 * clear + min(0.05, spread / 200.0)
     if damaged:
         conf = min(conf, 0.6)         # 泡过的纸，结论只当参考
     verdict.confidence = round(max(0.0, min(1.0, conf)), 2)
@@ -283,9 +357,10 @@ def analyze(image_path: str, grid: GridSpec,
         return _fail("这台机器没装 numpy（pip install numpy 后用）")
     if not _grid_ok(grid):
         return _fail("格阵参数不合法")
-    arr = _load_rgb(image_path)
+    arr, load_warnings = _load_rgb(image_path)
     if arr is None:
-        return _fail("读不了这张图")
+        return _fail("读不了这张图" + ("：" + load_warnings[-1].split(": ", 1)[-1]
+                                      if load_warnings else ""))
     h, w = arr.shape[:2]
     if h < 200 or w < 200:
         return _fail("图片太小")
@@ -301,7 +376,8 @@ def analyze(image_path: str, grid: GridSpec,
     if stats is None:
         return _fail("格子太小，图分辨率不够")
     base, ink, med, bstd, texture = stats
-    return _build_verdict(grid, blue, base, ink, med, bstd, texture, xs, ys, [])
+    return _build_verdict(grid, blue, base, ink, med, bstd, texture, xs, ys,
+                          list(load_warnings))
 
 
 def describe(verdict: ScanVerdict) -> str:

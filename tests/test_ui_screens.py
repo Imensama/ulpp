@@ -150,15 +150,17 @@ class OrientScreenTests(UiCase):
         shell = self.make_shell(flow=self.make_flow(index=1))
         shell.open_wizard = mock.Mock()
         shell.skip_step = mock.Mock()
+        shell.next_step = mock.Mock()
         shell.render()
-        # 两条路都摆在卡片里：进向导 / 跳过向导
+        # 卡片里只留「进向导」；页脚那颗在这一站叫「跳过向导 →」，走的也是 skip_step
         buttons = {w.cget("text"): w for w in _all(shell.root, "Button")}
         buttons[shell.T("orient.calibrate")].invoke()
         shell.open_wizard.assert_called_once()
-        buttons[shell.T("orient.skip")].invoke()
+        self.assertIn(shell.T("orient.skip_button"), buttons)
+        self.assertNotIn(shell.T("next"), buttons)
+        buttons[shell.T("orient.skip_button")].invoke()
         shell.skip_step.assert_called_once()
-        # 页脚不再重复放一个「跳过」
-        self.assertNotIn(shell.T("skip"), buttons)
+        self.assertEqual(shell.next_step.call_count, 0)
 
     def test_footer_has_no_skip_anywhere(self):
         """页脚不再放「跳过」：选纸站的跳过跟「下一步」等价，放纸方向站的跳过在卡片里。"""
@@ -168,6 +170,17 @@ class OrientScreenTests(UiCase):
             shell.render()
             texts = {w.cget("text") for w in _all(shell.root, "Button")}
             self.assertNotIn(shell.T("skip"), texts, "第 %d 站不该有页脚跳过" % (index + 1))
+
+
+    def test_partial_button_opens_the_window(self):
+        """「接着打」入口：2.0 转正时漏接过，这里钉住它。"""
+        shell = self.make_shell(flow=self.make_flow(index=2))
+        shell.open_partial = mock.Mock()
+        shell.render()
+        buttons = {w.cget("text"): w for w in _all(shell.root, "Button")}
+        self.assertIn(shell.T("partial.button"), buttons)
+        buttons[shell.T("partial.button")].invoke()
+        shell.open_partial.assert_called_once()
 
 
 class OutputScreenTests(UiCase):

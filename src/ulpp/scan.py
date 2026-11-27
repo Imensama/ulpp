@@ -61,11 +61,38 @@ class Measurement:
 
 
 # ---------------------------------------------------------------- 读图
+def render_pdf_page(path: str, dpi: float = 300.0) -> Optional[Tuple[Image.Image, float, float]]:
+    """用 pypdfium2 把 PDF 第一页**整页渲染**成位图；不可用时返回 None。
+
+    扫描仪常把一页拆成"一张彩色底图 + 一堆 JBIG2 文字/线条层"。按嵌图取只能拿到底图
+    （pypdf 连解码都要外挂 jbig2dec），整页渲染才是对的。
+    """
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        return None
+    try:
+        doc = pdfium.PdfDocument(str(path))
+        page = doc[0]
+        width_pt, height_pt = page.get_size()
+        bitmap = page.render(scale=float(dpi) / 72.0)
+        img = bitmap.to_pil().convert("RGB")
+        return img, width_pt * 25.4 / 72.0, height_pt * 25.4 / 72.0
+    except Exception:                 # 坏文件 / 加密 / 渲染失败
+        return None
+
+
 def _load(path: str) -> Tuple[Image.Image, float, float, float, List[str]]:
     """返回 (灰度图, 页宽 mm, 页高 mm, dpi, warnings)。"""
     warnings: List[str] = []
     suffix = Path(path).suffix.lower()
     if suffix == ".pdf":
+        rendered = render_pdf_page(path)
+        if rendered is not None:
+            img, page_w, page_h = rendered
+            dpi = img.width / (page_w / 25.4) if page_w else DEFAULT_DPI
+            return img.convert("L"), page_w, page_h, dpi, warnings
+        warnings.append("pdf_no_render: 没装 pypdfium2，只能按嵌图取，多层扫描可能读不全")
         from pypdf import PdfReader
 
         reader = PdfReader(path)

@@ -4,6 +4,7 @@
 import io
 import os
 import shutil
+import tempfile
 import unittest
 import uuid
 from contextlib import redirect_stdout
@@ -23,6 +24,7 @@ from ulpp.scan import (
     describe,
     measure_file,
     measure_image,
+    render_pdf_page,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +44,8 @@ def measurement(**overrides):
 
 class ScanEdgeBase(unittest.TestCase):
     def setUp(self):
-        self.dir = os.path.join(ROOT, f"ulpp_scan_edge_{uuid.uuid4().hex[:8]}")
+        self.dir = os.path.join(tempfile.gettempdir(),
+                                f"ulpp_scan_edge_{uuid.uuid4().hex[:8]}")
         os.makedirs(self.dir, exist_ok=True)
         self.addCleanup(shutil.rmtree, self.dir, True)
 
@@ -90,12 +93,20 @@ class TestLoad(ScanEdgeBase):
         self.assertGreater(dpi, 0)
 
     def test_pdf_without_image(self):
+        """没有位图的矢量 PDF：装了 pypdfium2 就整页渲染出来（更好），没装才报错。"""
         from pypdf import PdfWriter
         path = self.path("vector.pdf")
         writer = PdfWriter()
         writer.add_blank_page(width=595, height=842)
         with open(path, "wb") as fh:
             writer.write(fh)
+        if render_pdf_page(path) is not None:
+            img, page_w, page_h, dpi, warns = _load(path)
+            self.assertGreater(img.width, 100)
+            self.assertAlmostEqual(page_w, 210.0, places=0)
+            self.assertGreater(dpi, 50)
+            self.assertEqual(warns, [])
+            return
         with self.assertRaises(ValueError):
             _load(path)
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Dict, List
 
 from ..presets import DEFAULT_PRESET_KEY, PRESETS, by_key
+from ..templates import Template
 
 PREVIEW_W, PREVIEW_H = 168, 238      # 设计稿像素（会被 z 放大）
 
@@ -118,10 +119,36 @@ def _display(app, item) -> str:
 
 # ---------------------------------------------------------------- 纸的缩略图
 def _preview(app, parent, item, width: int = PREVIEW_W, height: int = PREVIEW_H):
-    """按真实节距把这张纸画出来：白纸 + 格线（不画内容）。"""
+    """只在"这张纸的几何是实测/自定义"时才画示意图。
+
+    预设是厂家标称值，画出来像真的、其实未必是用户手上那张纸（差 0.5mm 就打歪），
+    所以预设一律不画图，改成一个占位框 + 一句「没实测，只是大概」。
+    """
     P = app.P
     w, h = app.S(width), app.S(height)
     cv = tk.Canvas(parent, width=w, height=h, bg=P["card"], highlightthickness=0)
+    if not isinstance(item, Template):
+        # 抽象示意图：只表达"这是一张标签纸"，不按这张纸的真实几何画。
+        # 画成符号就不会被当成实拍/实测，比空框直观，也比真图诚实。
+        l, t, r, b = app.S(26), app.S(22), w - app.S(26), h - app.S(40)
+        cv.create_rectangle(l + app.S(3), t + app.S(3), r + app.S(3), b + app.S(3),
+                            fill=P["bg"], outline="")
+        cv.create_rectangle(l, t, r, b, fill="#FFFFFF", outline=P["border"],
+                            width=max(1, app.S(1)))
+        cols, rows = 4, 8
+        pad_x, pad_y = app.S(9), app.S(8)
+        gap = app.S(3)
+        cell_w = (r - l - 2 * pad_x - (cols - 1) * gap) / cols
+        cell_h = (b - t - 2 * pad_y - (rows - 1) * gap) / rows
+        for rr in range(rows):
+            for cc in range(cols):
+                x0 = l + pad_x + cc * (cell_w + gap)
+                y0 = t + pad_y + rr * (cell_h + gap)
+                cv.create_rectangle(x0, y0, x0 + cell_w, y0 + cell_h,
+                                    fill=P["chip"], outline=P["dot_off"])
+        cv.create_text(w / 2, h - app.S(20), text=app.T("sheet.preset_demo"),
+                       fill=P["muted"], font=app.F(9))
+        return app.keep(cv)
     g = _grid_of(item)
     pad = app.S(8)
     scale = min((w - 2 * pad) / g.page_w, (h - 2 * pad) / g.page_h)
@@ -167,6 +194,11 @@ def build_sheet(app, body) -> None:
              bg=app.P["card"], anchor="w").pack(fill="x")
     tk.Label(box, text=_spec(app, item), font=app.F(12), fg=app.P["muted"],
              bg=app.P["card"], anchor="w").pack(fill="x", pady=(app.S(6), 0))
+    if not isinstance(item, Template):
+        # 用预设就说清楚：这是标称值，不是他手上那张纸的实测
+        tk.Label(box, text=app.T("sheet.preset_note"), font=app.F(10),
+                 fg="#B45309", bg=app.P["card"], anchor="w", justify="left",
+                 wraplength=app.S(520)).pack(fill="x", pady=(app.S(6), 0))
 
     row = tk.Frame(box, bg=app.P["card"])
     row.pack(fill="x", pady=(app.S(20), 0))
@@ -231,11 +263,10 @@ def build_orient(app, body) -> None:
                                                 pady=(app.S(22), app.S(14)))
     row = tk.Frame(card, bg=app.P["card"])
     row.pack(fill="x", padx=app.S(24), pady=(0, app.S(20)))
-    # 两条路摆在同一个位置让人选：没校准过 → 进向导；已经知道方向 → 跳过这一步
+    # 卡片里只放「进向导」这一条非常规路径；"保持当前方向继续"由页脚的「跳过向导 →」负责，
+    # 不再单独放一颗同样的按钮（同一动作两个入口会让人愣）。
     _button(app, row, app.T("orient.calibrate"), app.open_wizard, kind="solid",
             size=12).pack(side="left")
-    _button(app, row, app.T("orient.skip"), app.skip_step, kind="cancel",
-            size=12).pack(side="left", padx=(app.S(12), 0))
     _tip(app, body, "orient")
     if app.flow.is_last:
         return
@@ -346,6 +377,8 @@ def build_output(app, body) -> None:
     opts2.pack(fill="x")
     ttk.Checkbutton(opts2, text=app.T("output.marks"), variable=app.make_marks,
                     command=app.on_options).pack(side="left")
+    ttk.Checkbutton(opts2, text=app.T("output.orient"), variable=app.make_orient,
+                    command=app.on_options).pack(side="left", padx=(app.S(10), 0))
 
     group("output.out_dir_hint")
     dirrow = tk.Frame(ri, bg=app.P["card"])

@@ -202,6 +202,33 @@ class EdgeCaseTests(Case):
         without = analyze(path, self.grid)
         self.assertEqual(with_dpi.used, without.used)
 
+    def test_pdf_scan_is_supported(self):
+        """扫描仪常直接存 PDF，得能读（走 pypdf，不额外加依赖）。"""
+        path = os.path.join(self.dir, "sheet.pdf")
+        render(peeled=[40, 41]).save(path)       # Pillow 能直接把图存成 PDF
+        verdict = analyze(path, self.grid)
+        self.assertTrue(verdict.ok, verdict.warnings)
+        self.assertEqual(sorted(verdict.used), [40, 41])
+
+    def test_vector_pdf_renders_to_empty_sheet(self):
+        """矢量 PDF（没有位图）：装了 pypdfium2 就整页渲染，空白页判成整张全空。"""
+        from pypdf import PdfWriter
+
+        path = os.path.join(self.dir, "vector.pdf")
+        writer = PdfWriter()
+        writer.add_blank_page(width=595, height=842)
+        with open(path, "wb") as fh:
+            writer.write(fh)
+        from ulpp.scan import render_pdf_page
+
+        if render_pdf_page(path) is None:          # 没装 pypdfium2：退回嵌图路径会明确失败
+            verdict = analyze(path, self.grid)
+            self.assertFalse(verdict.ok)
+            return
+        verdict = analyze(path, self.grid)
+        self.assertEqual(verdict.used, [])
+        self.assertLessEqual(len(verdict.unsure), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

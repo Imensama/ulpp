@@ -21,10 +21,11 @@ src/ulpp/            包代码
   scan_board.py      生成标定板 PDF
   templates.py       胶纸模板库（Template → GridSpec）
   partial.py         接着打的内容分配（纯逻辑）
+  partial_scan.py    从扫描件判断半张纸哪些格已经用掉（墨迹/离型纸蓝偏/破损）
   ui/                v2 外壳：shell / screens / texts / flow / scale / calibrate / advanced / partial
   gui.py             v1 老界面（**不要动**，入口 python -m ulpp）
   wizard.py          v1 的 9 步位置校准向导（v2 复用，不要重写）
-tests/               140+ 个 unittest（pytest 未引入，机器上没装）
+tests/               800+ 个 unittest（pytest 未引入，机器上没装）
 docs/design/         设计记录：为什么这么做、试过什么失败了
 packaging/           PyInstaller 配置（ulpp.spec 单文件 / ulpp_onedir.spec / ulpp_v2.spec）
 ```

@@ -251,8 +251,125 @@ def _placement(clip: Sequence[float], cell: Sequence[float], inset_mm: float):
     return scale, tx, ty, (tx0, ty0, tx0 + tw, ty0 + th)
 
 
+# 纸面上的方向标记：告诉使用者「这条边是设计的上，箭头指向设计的左」。
+# 横着画而不是竖着：打印机四周有 4mm 左右印不到，竖箭头被裁掉尖端会变成「T」形，
+# 横向箭头被裁只是变细、方向照样清楚（两种摆法都渲染比对过）。
+ORIENT_PRINT_MIN_MM = 4.0     # 一般激光机印不到这以内
+ORIENT_MIN_H_MM = 1.2         # 再矮就糊成一团，不画
+ORIENT_MAX_H_MM = 2.4
+ORIENT_LEN_MM = 64.0
+ORIENT_LEFT_MM = 8.0          # 离纸左边多远起笔
+
+
+def orient_mark_ops(grid: GridSpec) -> list:
+    """上边留白里的横向箭头；放不下时返回空列表（不画、不报错）。"""
+    mm = MM_TO_PT
+    page_h_pt = float(grid.page_h) * mm
+    y_bot_mm = float(grid.margin_top) - 0.5          # 留 0.5mm，别蹭到胶面
+    y_top_mm = max(ORIENT_PRINT_MIN_MM, y_bot_mm - ORIENT_MAX_H_MM)
+    height = y_bot_mm - y_top_mm
+    if height < ORIENT_MIN_H_MM:
+        return []
+
+    y0 = page_h_pt - y_bot_mm * mm                    # PDF 原点在左下，y 往上
+    y1 = page_h_pt - y_top_mm * mm
+    y_mid = (y0 + y1) / 2.0
+    x_tip = ORIENT_LEFT_MM * mm
+    head_len = height * 1.6 * mm
+    x_neck = x_tip + head_len
+    x_tail = x_tip + ORIENT_LEN_MM * mm
+    shaft_h = height * 0.42 * mm
+    head_top = y1
+    head_bot = y0
+
+    return [
+        ([], b"q"),
+        ([FloatObject(0)], b"g"),                     # 纯黑填充
+        ([_num(x_tip), _num(y_mid)], b"m"),           # 箭头尖
+        ([_num(x_neck), _num(head_top)], b"l"),
+        ([_num(x_neck), _num(head_bot)], b"l"),
+        ([], b"h"),
+        ([], b"f"),
+        ([_num(x_neck), _num(y_mid - shaft_h / 2),
+          _num(x_tail - x_neck), _num(shaft_h)], b"re"),
+        ([], b"f"),
+        ([], b"Q"),
+    ]
+
+
 def _num(v: float) -> FloatObject:
     return FloatObject(round(float(v), 4))
+
+
+def _margin_marks_ops(grid: GridSpec) -> list:
+    """参考版的边缘对位刻度 + 四角 L 形角标（`marks` 勾选项）。"""
+    page_h = float(grid.page_h) * MM_TO_PT
+    block_w = (grid.cols - 1) * grid.pitch_x + grid.cell_w
+    block_h = (grid.rows - 1) * grid.pitch_y + grid.cell_h
+    m_top = grid.margin_top
+    m_bottom = grid.page_h - (grid.margin_top + block_h)
+    m_left = grid.margin_x
+    m_right = grid.page_w - (grid.margin_x + block_w)
+    mm = MM_TO_PT
+    tick_w = FloatObject(0.4)
+    ops = [([], b"q"), ([FloatObject(0.45)], b"G"), ([tick_w], b"w")]
+    # 四角 L 形对位角标：直接标出标签区的四个角
+    corner = min(max(0.8, min(m_top, m_left, m_bottom, m_right)), 3.0) * mm
+    bx0, by0 = m_left * mm, m_top * mm
+    bx1 = (m_left + block_w) * mm
+    by1 = (m_top + block_h) * mm
+    ops += [([_num(bx0 - corner), _num(page_h - by0)], b"m"),
+            ([_num(bx0), _num(page_h - by0)], b"l"),
+            ([_num(bx0), _num(page_h - by0)], b"m"),
+            ([_num(bx0), _num(page_h - by0 + corner)], b"l"),
+            ([_num(bx1 + corner), _num(page_h - by0)], b"m"),
+            ([_num(bx1), _num(page_h - by0)], b"l"),
+            ([_num(bx1), _num(page_h - by0)], b"m"),
+            ([_num(bx1), _num(page_h - by0 + corner)], b"l"),
+            ([_num(bx0 - corner), _num(page_h - by1)], b"m"),
+            ([_num(bx0), _num(page_h - by1)], b"l"),
+            ([_num(bx0), _num(page_h - by1)], b"m"),
+            ([_num(bx0), _num(page_h - by1 - corner)], b"l"),
+            ([_num(bx1 + corner), _num(page_h - by1)], b"m"),
+            ([_num(bx1), _num(page_h - by1)], b"l"),
+            ([_num(bx1), _num(page_h - by1)], b"m"),
+            ([_num(bx1), _num(page_h - by1 - corner)], b"l")]
+    for side, margin in (("top", m_top), ("bottom", m_bottom)):
+        length = min(max(0.0, margin - 0.4), 6.0) * mm
+        if length < 1.0 * mm:
+            continue
+        for k in range(grid.cols + 1):
+            x = grid.margin_x + k * grid.pitch_x
+            if k == grid.cols:
+                x = grid.margin_x + block_w
+            xpt = x * mm
+            if side == "top":
+                y_from = page_h - m_top * mm
+                y_to = y_from + length
+            else:
+                y_from = m_bottom * mm
+                y_to = y_from - length
+            ops += [([_num(xpt), _num(y_from)], b"m"),
+                    ([_num(xpt), _num(y_to)], b"l")]
+    for side, margin in (("left", m_left), ("right", m_right)):
+        length = min(max(0.0, margin - 0.4), 6.0) * mm
+        if length < 1.0 * mm:
+            continue
+        for k in range(grid.rows + 1):
+            y = grid.margin_top + k * grid.pitch_y
+            if k == grid.rows:
+                y = grid.margin_top + block_h
+            ypt = page_h - y * mm
+            if side == "left":
+                x_from = m_left * mm
+                x_to = x_from - length
+            else:
+                x_from = (grid.page_w - m_right) * mm
+                x_to = x_from + length
+            ops += [([_num(x_from), _num(ypt)], b"m"),
+                    ([_num(x_to), _num(ypt)], b"l")]
+    ops += [([], b"S"), ([], b"Q")]
+    return ops
 
 
 def build_pdf(
@@ -261,6 +378,7 @@ def build_pdf(
     output_path: str,
     knife_lines: bool = False,
     marks: bool = False,
+    orient: bool = True,
     progress=None,
     text_font: Optional[str] = None,
     text_align: str = "center",
@@ -325,74 +443,8 @@ def build_pdf(
                     ([], b"Q"),
                 ]
 
-        if marks:      # 边距标尺：每个格子边界往纸边延伸一小段，正好对着模切线
-            mm = MM_TO_PT
-            block_w = (grid.cols - 1) * grid.pitch_x + grid.cell_w
-            block_h = (grid.rows - 1) * grid.pitch_y + grid.cell_h
-            m_top = grid.margin_top
-            m_bottom = grid.page_h - (grid.margin_top + block_h)
-            m_left = grid.margin_x
-            m_right = grid.page_w - (grid.margin_x + block_w)
-            tick_w = FloatObject(0.4)
-            ops += [([], b"q"), ([FloatObject(0.45)], b"G"),
-                    ([tick_w], b"w")]
-            # 四角 L 形对位角标：直接标出标签区的四个角
-            corner = min(max(0.8, min(m_top, m_left, m_bottom, m_right)), 3.0) * mm
-            bx0, by0 = m_left * mm, m_top * mm
-            bx1 = (m_left + block_w) * mm
-            by1 = (m_top + block_h) * mm
-            ops += [([_num(bx0 - corner), _num(page_h - by0)], b"m"),
-                    ([_num(bx0), _num(page_h - by0)], b"l"),
-                    ([_num(bx0), _num(page_h - by0)], b"m"),
-                    ([_num(bx0), _num(page_h - by0 + corner)], b"l"),
-                    ([_num(bx1 + corner), _num(page_h - by0)], b"m"),
-                    ([_num(bx1), _num(page_h - by0)], b"l"),
-                    ([_num(bx1), _num(page_h - by0)], b"m"),
-                    ([_num(bx1), _num(page_h - by0 + corner)], b"l"),
-                    ([_num(bx0 - corner), _num(page_h - by1)], b"m"),
-                    ([_num(bx0), _num(page_h - by1)], b"l"),
-                    ([_num(bx0), _num(page_h - by1)], b"m"),
-                    ([_num(bx0), _num(page_h - by1 - corner)], b"l"),
-                    ([_num(bx1 + corner), _num(page_h - by1)], b"m"),
-                    ([_num(bx1), _num(page_h - by1)], b"l"),
-                    ([_num(bx1), _num(page_h - by1)], b"m"),
-                    ([_num(bx1), _num(page_h - by1 - corner)], b"l")]
-
-            for side, margin in (("top", m_top), ("bottom", m_bottom)):
-                length = min(max(0.0, margin - 0.4), 6.0) * mm
-                if length < 1.0 * mm:
-                    continue
-                for k in range(grid.cols + 1):
-                    x = grid.margin_x + k * grid.pitch_x
-                    if k == grid.cols:
-                        x = grid.margin_x + block_w
-                    xpt = x * mm
-                    if side == "top":
-                        y0 = page_h - m_top * mm
-                        ops += [([_num(xpt), _num(y0)], b"m"),
-                                ([_num(xpt), _num(y0 + length)], b"l")]
-                    else:
-                        y0 = (m_top + block_h) * mm
-                        ops += [([_num(xpt), _num(y0)], b"m"),
-                                ([_num(xpt), _num(y0 - length)], b"l")]
-            for side, margin in (("left", m_left), ("right", m_right)):
-                length = min(max(0.0, margin - 0.4), 6.0) * mm
-                if length < 1.0 * mm:
-                    continue
-                for k in range(grid.rows + 1):
-                    y = grid.margin_top + k * grid.pitch_y
-                    if k == grid.rows:
-                        y = grid.margin_top + block_h
-                    ypt = page_h - y * mm
-                    if side == "left":
-                        x0 = m_left * mm
-                        ops += [([_num(x0), _num(ypt)], b"m"),
-                                ([_num(x0 - length), _num(ypt)], b"l")]
-                    else:
-                        x0 = (m_left + block_w) * mm
-                        ops += [([_num(x0), _num(ypt)], b"m"),
-                                ([_num(x0 + length), _num(ypt)], b"l")]
-            ops += [([], b"S"), ([], b"Q")]
+        if marks:            # 边缘刻度与角标整块搬进 _margin_marks_ops
+            ops += _margin_marks_ops(grid)
 
         inset = grid.inset * MM_TO_PT
         for slot in range(per_sheet):
@@ -475,6 +527,9 @@ def build_pdf(
                     "qty": entry.item.copies, "copy": entry.copy_no, "scale_pct": "",
                 })
 
+        if orient and not knife_lines:  # 方向标记只印正式版，参考版保持干净
+            ops = orient_mark_ops(grid) + ops
+
         content = ContentStream(None, writer)
         content.operations.extend(ops)
         page.replace_contents(content)
@@ -512,6 +567,7 @@ def build_all(
     make_proof: bool = True,
     make_csv: bool = True,
     marks: bool = False,
+    orient: bool = True,
     text_items: Sequence[TextItem] = (),
     image_paths: Sequence[str] = (),
     progress=None,
@@ -541,7 +597,8 @@ def build_all(
         log(tr("builder.log.place", total=len(entries), pdf=n_pdf, text=n_txt,
                sheets=total_sheets, file=os.path.basename(prod)))
     manifest = build_pdf(entries, grid, prod, knife_lines=False, marks=marks,
-                             progress=_p("production"),
+                         orient=orient,
+                         progress=_p("production"),
                          text_font=text_font, text_align=text_align,
                          text_max_pt=text_max_pt, text_uniform=text_uniform)
     outputs["production"] = prod
@@ -582,6 +639,7 @@ def build_partial_pdf(
     text_align: str = "center",
     text_max_pt: float = 48.0,
     text_uniform: bool = False,
+    orient: bool = True,
 ) -> List[dict]:
     """只把指定格子画到一页 A4 上；``placements`` 是 {格号(0起): Entry}。"""
     if not placements:
@@ -622,7 +680,7 @@ def build_partial_pdf(
             NameObject("/XObject"): xobjects,
         }
     )
-    ops = []
+    ops = orient_mark_ops(grid) if orient else []   # 半张纸更需要知道哪边上
     inset = grid.inset * MM_TO_PT
     manifest: List[dict] = []
 
@@ -725,6 +783,7 @@ def build_partial_all(
     out_dir: str,
     base_name: Optional[str] = None,
     make_csv: bool = True,
+    orient: bool = True,
     offset_mm: Sequence[float] = (0.0, 0.0),
     log=None,
     text_font: Optional[str] = None,
@@ -744,7 +803,7 @@ def build_partial_all(
     manifest = build_partial_pdf(
         placements, grid, prod, offset_mm=offset_mm,
         text_font=text_font, text_align=text_align,
-        text_max_pt=text_max_pt, text_uniform=text_uniform,
+        text_max_pt=text_max_pt, text_uniform=text_uniform, orient=orient,
     )
     outputs: Dict[str, str] = {"production": prod}
 

@@ -32,6 +32,10 @@ class SheetStoreError(ValueError):
 
 
 def default_sheets_path() -> Path:
+    """``ULPP_STATE_DIR`` 可改路径（测试/沙箱用，和 templates 保持一致）。"""
+    override = os.environ.get("ULPP_STATE_DIR")
+    if override:
+        return Path(override) / "sheets.json"
     if os.name == "nt":
         base = os.environ.get("APPDATA")
         if base:

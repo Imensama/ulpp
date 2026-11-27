@@ -84,6 +84,7 @@ class Shell:
         self.make_proof = tk.BooleanVar(value=bool(a.get("proof", True)))
         self.make_csv = tk.BooleanVar(value=bool(a.get("csv", True)))
         self.make_marks = tk.BooleanVar(value=bool(a.get("marks", False)))
+        self.make_orient = tk.BooleanVar(value=bool(a.get("orient", False)))
         self.out_dir = tk.StringVar(value=str(a.get("out_dir", "")))
         self.base_name = tk.StringVar(value=str(a.get("base_name", self.T("base_name.default"))))
         self.measurement = None       # 最近一次量出来的结果（还没存成模板）
@@ -232,6 +233,10 @@ class Shell:
             AppButton(parent, self.T("output.generate"), self.generate,
                       button_type="submit", palette=P, font=self.F, scale=S,
                       size="lg").pack(side="left", padx=(S(12), 0))
+        # 接着打：用上次没用完的半张纸（老界面一直有这颗按钮，2.0 转正时漏了）
+        AppButton(parent, self.T("partial.button"), self.open_partial,
+                  button_type="info", palette=P, font=self.F, scale=S,
+                  size="md").pack(side="left", padx=(S(8), 0))
         if self.output_error:
             # 琥珀色而不是正红：绝大多数是「还没放内容」这种前置条件，不是炸了
             tk.Label(parent, text=self.T("output.fail", err=self.output_error),
@@ -315,8 +320,13 @@ class Shell:
                       button_type="cancel", palette=P, font=self.F, scale=S,
                       size="md").pack(side="left")
 
-        label = self.T("finish") if self.flow.is_last else self.T("next")
-        command = self.finish_step if self.flow.is_last else self.next_step
+        if self.flow.is_last:
+            label, command = self.T("finish"), self.finish_step
+        elif self.flow.current == "orient":
+            # 这一站的"往前"就是跳过向导：方向已经知道，直接沿用存下来的
+            label, command = self.T("orient.skip_button"), self.skip_step
+        else:
+            label, command = self.T("next"), self.next_step
         primary = AppButton(self._footer, label, command, button_type="submit",
                             palette=P, font=self.F, scale=S, size="lg")
         # 最后一步的「完成」比「下一步 →」短得多，不兜底会缩成方块；只兜到一个
@@ -540,6 +550,17 @@ class Shell:
 
     IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 
+    def focus_text(self) -> None:
+        """把焦点放回文字输入框（「接着打」窗口里点「写文字标签」时用）。"""
+        box = self._text_box
+        if box is None:
+            return
+        try:
+            box.focus_set()
+            box.see("end")
+        except Exception:            # pragma: no cover - 控件已销毁
+            pass
+
     def pick_pdfs(self) -> None:
         from tkinter import filedialog
 
@@ -678,6 +699,7 @@ class Shell:
             "proof": bool(self.make_proof.get()),
             "csv": bool(self.make_csv.get()),
             "marks": bool(self.make_marks.get()),
+            "orient": bool(self.make_orient.get()),
             "out_dir": self.out_dir.get(),
             "base_name": self.base_name.get(),
         })
@@ -726,6 +748,7 @@ class Shell:
             proof=bool(self.make_proof.get()),
             csv=bool(self.make_csv.get()),
             marks=bool(self.make_marks.get()),
+            orient=bool(self.make_orient.get()),
             align=self.text_align.get(),
             uniform=bool(self.text_uniform.get()),
             grid=grid,
@@ -748,6 +771,7 @@ class Shell:
             outs = build_all(
                 pdfs, job["grid"], job["out_dir"], base_name=job["base_name"],
                 make_proof=job["proof"], make_csv=job["csv"],
+                orient=job["orient"],
                 text_items=job["items"], image_paths=job["images"],
                 progress=lambda stage, done, total: q.put(("progress", done, max(1, total))),
                 log=lambda msg: q.put(("log", msg)),
